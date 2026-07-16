@@ -54,6 +54,28 @@ Sideload in Overwolf: **Overwolf → Settings → About → Development options 
 Load unpacked extension** → select the built `dist/` folder (contains
 `manifest.json`). Use the background window's `debug_url` for DevTools.
 
+## Dev testing (no Overwolf / no Windows)
+
+Everything except the live GEP capture can be exercised on any OS:
+
+```bash
+npm test          # unit tests: deep-link parsing + inventory normalization
+npm run dev        # then open http://localhost:5173/src/dev/dev.html
+```
+
+The **dev harness** (`src/dev/`) installs a mock Overwolf runtime and runs the
+real pair → normalize → debounce → ingest pipeline in a plain browser:
+
+1. Run AOWA locally with `FRONTEND_ORIGIN=http://localhost:5173` (browser CORS),
+   or point the harness at it with `VITE_AOWA_API_BASE=http://localhost:8097/api`.
+2. In AOWA → Profile → Game agent → **Link agent**, copy the one-time code.
+3. Paste it into the harness and hit **Pair**, then **Simulate inventory sync**.
+4. The fake inventory posts to AOWA; watch Inventory/Relics update and the
+   status dot turn green.
+
+This validates the whole flow end-to-end; only Warframe's *real* inventory feed
+(shape + item-name format) needs Overwolf + Windows to confirm.
+
 ### Types
 
 `src/types/overwolf.d.ts` declares only the API subset used here so the scaffold
