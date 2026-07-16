@@ -112,9 +112,8 @@ Concrete items to verify on a Windows machine with Overwolf + Warframe, in order
    is the only place to change, and it's unit-tested).
 4. **Name matching** — AOWA's `relicBase()` normalization must line up with the
    captured names; tune on either side as needed.
-5. **Icons** — replace the placeholders in `public/icons/`
-   (`icon256.png`, `icon256_gray.png`, `icon.ico`) with real assets; Overwolf
-   packaging requires them.
+5. **Icons** — placeholder icons (a purple "A") are included so the app loads
+   and packages; swap in real AOWA branding before store release.
 6. **Package & submit** — build the `.opk` and submit to the Overwolf store for
    review (the main lead-time item). Update the AOWA Profile panel's install link.
 
