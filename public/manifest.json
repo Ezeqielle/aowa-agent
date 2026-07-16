@@ -5,7 +5,7 @@
     "name": "AOWA Agent",
     "version": "0.1.0",
     "minimum-overwolf-version": "0.239.0",
-    "author": "AOWA",
+    "author": "Ashguard",
     "icon": "icons/icon256.png",
     "icon_gray": "icons/icon256_gray.png",
     "launcher_icon": "icons/icon.ico",
