@@ -94,13 +94,22 @@ Concrete items to verify on a Windows machine with Overwolf + Warframe, in order
 1. **Game id** — `config.WARFRAME_CLASS_ID` / `manifest game_ids` are set to
    `8954`. Confirm against Overwolf's supported-games list; Overwolf distinguishes
    a game's short *class id* from the longer runtime *game id*.
-2. **GEP inventory granularity** — run Overwolf's GEP sample app against a live
-   session and dump `match_info.inventory`. Confirm whether it includes **relics
-   with counts** or only equippable gear, and capture the exact **item-name
-   format** (e.g. `"Axi A1 Relic"` vs `"AxiA1"`). If relics aren't in GEP, they
-   wait for P3 (EE.log).
+2. **GEP inventory granularity** — the agent has a **built-in capture logger**
+   (`DEBUG_GEP`, on under `npm run dev`; force with `VITE_DEBUG_GEP=1`). With
+   Warframe running and the app loaded, open the **background window's DevTools**
+   and filter the console for **`[AOWA-GEP]`**. You'll see:
+   - `getRunningGameInfo` — the real game `id`/`classId` (confirm vs
+     `WARFRAME_CLASS_ID` / manifest `game_ids`);
+   - `setRequiredFeatures result` — whether `inventory` is a supported feature;
+   - `getInfo res` and `onInfoUpdates2 [<feature>]` — the **raw** payloads (with a
+     parsed-JSON attempt), so you can read the exact inventory shape + item-name
+     format (`"Axi A1 Relic"` vs `"AxiA1"`, array vs map, relics-with-counts?).
+
+   Open your in-game inventory/foundry to trigger updates, then copy the logged
+   payloads. If relics aren't in GEP at all, they wait for P3 (EE.log).
 3. **`normalizeInventory()`** — adjust to the real payload shape captured above
-   (it currently handles the two likely shapes defensively).
+   (it currently handles the two likely shapes defensively; `src/lib/inventory.ts`
+   is the only place to change, and it's unit-tested).
 4. **Name matching** — AOWA's `relicBase()` normalization must line up with the
    captured names; tune on either side as needed.
 5. **Icons** — replace the placeholders in `public/icons/`

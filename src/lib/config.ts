@@ -26,3 +26,12 @@ export const INGEST_DEBOUNCE_MS = 4000
 
 // localStorage key for the persisted agent bearer token.
 export const TOKEN_KEY = 'aowa.agent.token'
+
+// DEBUG_GEP logs the raw + normalized Game Events payloads to the console — used
+// on-device to capture Warframe's real inventory shape. On by default under
+// `vite dev`; force with VITE_DEBUG_GEP=1 (or =0 to silence) in a built app.
+export const DEBUG_GEP: boolean = (() => {
+  const v = import.meta.env.VITE_DEBUG_GEP as string | undefined
+  if (v !== undefined) return v === '1' || v === 'true'
+  return !!import.meta.env.DEV
+})()
