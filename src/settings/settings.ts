@@ -1,24 +1,17 @@
-// Settings window: shows connection status and lets the user open AOWA to pair,
-// or unpair this device. State is published by the background controller on the
-// shared main-window object; we poll it for display.
-import { clearToken, isPaired } from '../lib/storage'
+// Settings window: shows connection status, lets the user open AOWA to pair,
+// paste a one-time code manually (fallback when the aowa:// deep link doesn't
+// fire), or unpair. Pairing/unpairing is delegated to the background controller
+// via the shared bridge so the GEP feed starts/stops correctly.
+import { bridge, type AowaState } from '../lib/bridge'
+import { isPaired } from '../lib/storage'
 
 const AOWA_PROFILE_URL = 'https://aowa.ashguard.io/profile'
-
-interface AowaState {
-  state: 'unpaired' | 'connected' | 'syncing' | 'error'
-  detail: string
-}
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement
 
 function readState(): AowaState {
-  try {
-    const main = overwolf.windows.getMainWindow() as unknown as { aowaState?: AowaState }
-    if (main.aowaState) return main.aowaState
-  } catch {
-    /* background window not reachable yet */
-  }
+  const s = bridge().aowaState
+  if (s) return s
   return { state: isPaired() ? 'connected' : 'unpaired', detail: '' }
 }
 
@@ -43,12 +36,35 @@ function render(): void {
   ;($('unpair') as HTMLButtonElement).disabled = !isPaired()
 }
 
+async function pairManually(): Promise<void> {
+  const input = $('code') as HTMLInputElement
+  const code = input.value.trim()
+  if (!code) return
+  const pairFn = bridge().aowaPairWithCode
+  if (!pairFn) {
+    $('detail').textContent = 'Agent is still starting — try again in a moment.'
+    return
+  }
+  ;($('pair') as HTMLButtonElement).disabled = true
+  try {
+    await pairFn(code)
+    input.value = ''
+  } finally {
+    ;($('pair') as HTMLButtonElement).disabled = false
+    render()
+  }
+}
+
 function main(): void {
   $('open-aowa').addEventListener('click', () => {
     overwolf.utils.openUrlInDefaultBrowser(AOWA_PROFILE_URL)
   })
+  $('pair').addEventListener('click', () => void pairManually())
+  ;($('code') as HTMLInputElement).addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter') void pairManually()
+  })
   $('unpair').addEventListener('click', () => {
-    clearToken()
+    bridge().aowaUnpair?.()
     render()
   })
   render()

@@ -9,8 +9,7 @@ import { INGEST_DEBOUNCE_MS } from '../lib/config'
 import { ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
 import { clearToken, loadToken, saveToken } from '../lib/storage'
 import { onPairCode, startInventoryFeed } from '../lib/overwolf'
-
-type State = 'unpaired' | 'connected' | 'syncing' | 'error'
+import { bridge, type AgentState } from '../lib/bridge'
 
 let stopFeed: (() => void) | null = null
 let pendingItems: IngestItem[] | null = null
@@ -22,13 +21,10 @@ function log(msg: string): void {
   console.log(`[aowa-agent] ${msg}`)
 }
 
-function setState(state: State, detail = ''): void {
+function setState(state: AgentState, detail = ''): void {
   log(`state=${state} ${detail}`.trim())
-  // Cross-window notification hook — the settings window reads this.
-  ;(overwolf.windows.getMainWindow() as unknown as { aowaState?: { state: State; detail: string } }).aowaState = {
-    state,
-    detail,
-  }
+  // Published for the settings window to read (see lib/bridge).
+  bridge().aowaState = { state, detail }
 }
 
 // scheduleFlush coalesces a burst of GEP updates into a single POST.
@@ -84,9 +80,14 @@ function teardown(): void {
 }
 
 async function handlePairing(code: string): Promise<void> {
+  const c = code.trim()
+  if (!c) {
+    setState('error', 'no pairing code')
+    return
+  }
   try {
     setState('unpaired', 'pairing…')
-    const { token } = await pair(code)
+    const { token } = await pair(c)
     saveToken(token)
     log('paired successfully')
     startFeed()
@@ -95,7 +96,18 @@ async function handlePairing(code: string): Promise<void> {
   }
 }
 
+function unpair(): void {
+  teardown()
+  clearToken()
+  setState('unpaired', 'unlinked')
+}
+
 function main(): void {
+  // Control hooks the settings window calls (deep-link pairing still works too).
+  const b = bridge()
+  b.aowaPairWithCode = handlePairing
+  b.aowaUnpair = unpair
+
   onPairCode((code) => void handlePairing(code))
   if (loadToken()) {
     log('existing token found — starting feed')

@@ -30,6 +30,14 @@
       }
       button.primary { background: #7c3aed; border-color: #7c3aed; }
       button:disabled { opacity: 0.4; cursor: default; }
+      .manual { margin-top: 1rem; }
+      .manual label { display: block; font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.35rem; }
+      .manual-row { display: flex; gap: 0.6rem; }
+      .manual input {
+        flex: 1; padding: 0.6rem 0.7rem; border-radius: 10px; border: 1px solid #2b3242;
+        background: #0f1117; color: #e5e7eb; font-size: 0.9rem; font-family: ui-monospace, monospace;
+      }
+      .manual button { flex: 0 0 auto; }
     </style>
   </head>
   <body>
@@ -46,12 +54,20 @@
 
     <p class="steps">
       To link: open <b>AOWA → Profile → Game agent → Link agent</b>. Your browser
-      will launch this app and pair it automatically. If it doesn't, paste the
-      one-time code shown there (manual entry — coming soon).
+      will launch this app and pair it automatically. If it doesn't fire, paste
+      the one-time code shown there below.
     </p>
 
+    <div class="manual">
+      <label for="code">One-time pairing code</label>
+      <div class="manual-row">
+        <input id="code" type="text" placeholder="paste code…" autocomplete="off" spellcheck="false" />
+        <button class="primary" id="pair">Pair</button>
+      </div>
+    </div>
+
     <div class="row">
-      <button class="primary" id="open-aowa">Open AOWA</button>
+      <button id="open-aowa">Open AOWA</button>
       <button id="unpair">Unpair</button>
     </div>
 

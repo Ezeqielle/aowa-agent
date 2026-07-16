@@ -84,10 +84,12 @@ Concrete items to verify on a Windows machine with Overwolf + Warframe, in order
 5. **Icons** — replace the placeholders in `public/icons/`
    (`icon256.png`, `icon256_gray.png`, `icon.ico`) with real assets; Overwolf
    packaging requires them.
-6. **Manual code entry** — add a text input to the settings window as a fallback
-   when the `aowa://` deep link doesn't fire (app not yet registered).
-7. **Package & submit** — build the `.opk` and submit to the Overwolf store for
+6. **Package & submit** — build the `.opk` and submit to the Overwolf store for
    review (the main lead-time item). Update the AOWA Profile panel's install link.
+
+**Done:** manual code entry — the settings window has a "one-time pairing code"
+input + Pair button (delegates to the background controller via `lib/bridge`),
+so pairing works even if the `aowa://` deep link doesn't fire.
 
 ## Later phases
 
