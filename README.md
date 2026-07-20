@@ -22,6 +22,64 @@ overlay while being **self-distributed** — no consumer app-store listing.
 - **Inventory sync** (background) — GEP inventory → AOWA (owned gear + relic
   counts), a supporting feature, not the whole app.
 
+## Architecture
+
+```mermaid
+flowchart LR
+  USER((Player)):::u
+  WF["Warframe client"]:::game
+  WEB["AOWA web app<br/>Profile → Link agent"]:::web
+
+  subgraph AGENT["AOWA Agent — ow-electron (Windows)"]
+    direction TB
+    MAIN["Main process (Node)<br/>• GEP subscribe<br/>• deep-link + manual pairing<br/>• worldState fetch (no CORS)<br/>• inventory → ingest"]:::main
+    DASH["Dashboard window<br/>Baro · Fissures · Sortie<br/>Archon · Cycles · pairing"]:::win
+    OV["In-game overlay<br/>hotkey Alt+Shift+A"]:::win
+    TRAY["System tray"]:::win
+    MAIN <-->|IPC| DASH
+    MAIN <-->|IPC| OV
+    MAIN --- TRAY
+  end
+
+  subgraph BACK["AOWA backend"]
+    API["Go API"]:::api
+    DB[("Postgres")]:::db
+    API --> DB
+  end
+
+  WF -->|"GEP: inventory / game_info"| MAIN
+  WEB -->|"aowa://pair?code=…"| MAIN
+  MAIN <-->|"HTTPS: pair · ingest · worldState<br/>(Bearer agent token)"| API
+  USER -->|hotkey / tray / click| AGENT
+  USER -->|"Link agent"| WEB
+
+  classDef u fill:#334,stroke:#557,color:#fff;
+  classDef game fill:#3a2f1a,stroke:#a80,color:#fff;
+  classDef web fill:#1e2a4a,stroke:#47f,color:#fff;
+  classDef main fill:#2a1a3a,stroke:#a7f,color:#fff;
+  classDef win fill:#151824,stroke:#7c3aed,color:#e5e7eb;
+  classDef api fill:#14322a,stroke:#2b8,color:#fff;
+  classDef db fill:#222,stroke:#888,color:#fff;
+```
+
+Pairing handshake:
+
+```mermaid
+sequenceDiagram
+  participant U as Player
+  participant W as AOWA web (Profile)
+  participant A as AOWA API
+  participant G as Agent (ow-electron)
+  U->>W: click "Link agent"
+  W->>A: POST /api/me/agent/link
+  A-->>W: one-time code + aowa://pair?code=…
+  W->>G: open deep link (or paste code)
+  G->>A: POST /api/agent/pair {code}
+  A-->>G: long-lived bearer token (stored)
+  W->>A: GET /api/me/agent → connected
+  G->>A: POST /api/me/agent/events (inventory, Bearer)
+```
+
 ## Layout
 | Path | Role |
 | --- | --- |
