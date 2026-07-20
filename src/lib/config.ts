@@ -1,37 +1,22 @@
-// Static configuration for the agent.
+// Shared constants (usable in both the Electron main process and the renderer —
+// no Vite-only `import.meta.env`, so it compiles for Node too).
 
-// AOWA API base. The agent talks to the same public API as the web app.
-// Override at build time with VITE_AOWA_API_BASE for staging/local testing.
-export const API_BASE: string =
-  (import.meta.env.VITE_AOWA_API_BASE as string | undefined) ?? 'https://aowa.ashguard.io/api'
+// AOWA API base. Override in the main process via AOWA_API_BASE.
+export const API_BASE = 'https://aowa.ashguard.io/api'
 
-// Custom URL scheme registered in manifest.json (url_protocol). The AOWA web app
-// hands the pairing code to the agent via `aowa://pair?code=<code>`.
+// Custom URL scheme for one-click pairing deep links (aowa://pair?code=…).
 export const URL_SCHEME = 'aowa'
 
-// Warframe's Overwolf game/class id. Used in manifest game_targeting.game_ids
-// and to gate GEP subscription. VERIFY against Overwolf's supported-games list
-// and the GEP sample app before shipping — Overwolf distinguishes a game's
-// short "class id" (used here) from the longer runtime "game id".
-export const WARFRAME_CLASS_ID = 8954
+// Warframe's GEP game id — confirmed present in ow-electron's supported-games
+// list (`overwolf/ow-electron-packages-types`: `Warframe = 8954`).
+export const WARFRAME_GAME_ID = 8954
 
-// GEP features we subscribe to. Warframe's GEP is narrow — inventory + game_info
-// are what AOWA's P1 ingest consumes. Confirm exact feature keys with the GEP
-// simulator; they occasionally change.
-export const REQUIRED_FEATURES = ['inventory', 'game_info'] as const
+// GEP features to request. Warframe's GEP is narrow; inventory + game_info are
+// what AOWA consumes. Confirm exact feature keys on-device.
+export const GEP_FEATURES = ['inventory', 'game_info'] as const
 
-// How long to coalesce a burst of inventory updates before POSTing, so opening a
-// menu that emits many updates results in one request, not dozens.
+// Coalesce bursts of inventory updates into one POST.
 export const INGEST_DEBOUNCE_MS = 4000
 
-// localStorage key for the persisted agent bearer token.
-export const TOKEN_KEY = 'aowa.agent.token'
-
-// DEBUG_GEP logs the raw + normalized Game Events payloads to the console — used
-// on-device to capture Warframe's real inventory shape. On by default under
-// `vite dev`; force with VITE_DEBUG_GEP=1 (or =0 to silence) in a built app.
-export const DEBUG_GEP: boolean = (() => {
-  const v = import.meta.env.VITE_DEBUG_GEP as string | undefined
-  if (v !== undefined) return v === '1' || v === 'true'
-  return !!import.meta.env.DEV
-})()
+// Log raw GEP payloads to help capture Warframe's real inventory shape.
+export const DEBUG_GEP = true

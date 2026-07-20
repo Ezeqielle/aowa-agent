@@ -1,19 +1,22 @@
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 
-// Overwolf loads window HTML from the packaged folder via relative paths, so the
-// build must use a relative base and emit each window's HTML at a stable path.
-// `public/` (manifest.json + icons) is copied to the dist root verbatim.
+const r = (p: string) => resolve(import.meta.dirname, p)
+
+// Bundles the renderer windows. Root is the renderer dir so the built HTML lands
+// flat at dist/renderer/<name>.html (matching what the main process loads).
 export default defineConfig({
+  root: 'src/renderer',
   base: './',
   build: {
-    outDir: 'dist',
+    outDir: r('dist/renderer'),
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        background: resolve(__dirname, 'src/background/background.html'),
-        settings: resolve(__dirname, 'src/settings/settings.html'),
+        dashboard: r('src/renderer/dashboard.html'),
+        overlay: r('src/renderer/overlay.html'),
       },
     },
   },
+  server: { port: 5173, fs: { allow: ['..', '../..'] } },
 })

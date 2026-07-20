@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AOWA</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <h1>AOWA <span class="muted">— Warframe companion</span></h1>
+        <div class="status">
+          <span class="dot" id="dot"></span><span id="status-text">…</span>
+        </div>
+      </div>
+
+      <div class="pair" style="margin-bottom:1rem">
+        <button class="primary" id="open-aowa">Link agent (open AOWA)</button>
+        <input id="code" type="text" placeholder="or paste one-time code" autocomplete="off" spellcheck="false" />
+        <button id="pair">Pair</button>
+        <button id="unpair">Unpair</button>
+      </div>
+      <p class="err" id="err"></p>
+
+      <div id="cycles" class="cycles" style="margin-bottom:1rem"></div>
+
+      <div class="grid">
+        <div class="card"><h2>Baro Ki'Teer</h2><div id="baro"></div></div>
+        <div class="card"><h2>Sortie</h2><div id="sortie"></div></div>
+        <div class="card"><h2>Archon Hunt</h2><div id="archon"></div></div>
+        <div class="card" style="grid-column:1/-1"><h2>Void Fissures</h2><div id="fissures"></div></div>
+      </div>
+    </div>
+    <script type="module" src="./dashboard.ts"></script>
+  </body>
+</html>

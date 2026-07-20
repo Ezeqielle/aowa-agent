@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractPairCode } from './overwolf'
+import { extractPairCode } from './deeplink'
 
 describe('extractPairCode', () => {
   it('parses a well-formed deep link', () => {
@@ -14,10 +14,8 @@ describe('extractPairCode', () => {
   it('rejects the wrong action', () => {
     expect(extractPairCode('aowa://open?code=ABC123')).toBeNull()
   })
-  it('rejects a missing code', () => {
+  it('rejects a missing code and junk', () => {
     expect(extractPairCode('aowa://pair')).toBeNull()
-  })
-  it('rejects junk', () => {
     expect(extractPairCode('not a url')).toBeNull()
     expect(extractPairCode('')).toBeNull()
   })
