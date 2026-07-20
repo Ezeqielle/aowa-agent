@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('aowa', {
   unpair: (): Promise<void> => ipcRenderer.invoke('aowa:unpair'),
   openAowa: (): Promise<void> => ipcRenderer.invoke('aowa:open-aowa'),
   worldState: (): Promise<unknown> => ipcRenderer.invoke('aowa:worldstate'),
+  me: (): Promise<unknown> => ipcRenderer.invoke('aowa:me'),
   onStatus: (cb: (s: AgentStatus) => void) => {
     ipcRenderer.on('aowa:status', (_e, s: AgentStatus) => cb(s))
   },

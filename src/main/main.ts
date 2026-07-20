@@ -12,7 +12,7 @@
 import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut } from 'electron'
 import { join } from 'node:path'
 import { DEBUG_GEP, GEP_FEATURES, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
-import { ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
+import { fetchOwnedRelics, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
 import { normalizeInventory } from '../lib/inventory'
 import { extractPairCode } from '../lib/deeplink'
 import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
@@ -200,6 +200,22 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle('aowa:worldstate', async () => {
     const [ws, cycles] = await Promise.all([fetchWorldState(), fetchCycles()])
     return { ws, cycles }
+  })
+  // Personal data via the stored agent token (backend #37). Returns paired:false
+  // when unlinked; drops the token if the server rejects it.
+  ipcMain.handle('aowa:me', async () => {
+    const token = loadToken()
+    if (!token) return { paired: false }
+    try {
+      const [todos, relics] = await Promise.all([fetchTodos(token), fetchOwnedRelics(token)])
+      return { paired: true, todos, relics }
+    } catch (e) {
+      if (e instanceof UnauthorizedError) {
+        clearToken()
+        broadcastStatus()
+      }
+      return { paired: false }
+    }
   })
 
   app.whenReady().then(() => {

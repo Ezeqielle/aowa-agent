@@ -3,6 +3,13 @@ export interface AgentStatus {
   paired: boolean
 }
 import type { Cycle, WorldState } from '../lib/aowa-data'
+import type { Todo } from '../lib/api'
+
+export interface MeData {
+  paired: boolean
+  todos?: Todo[]
+  relics?: Record<string, number>
+}
 
 export interface AowaBridge {
   status(): Promise<AgentStatus>
@@ -10,6 +17,7 @@ export interface AowaBridge {
   unpair(): Promise<void>
   openAowa(): Promise<void>
   worldState(): Promise<{ ws: WorldState; cycles: Cycle[] }>
+  me(): Promise<MeData>
   onStatus(cb: (s: AgentStatus) => void): void
 }
 declare global {

@@ -33,9 +33,39 @@ function renderStatus(s: { paired: boolean }): void {
   ;($('unpair') as HTMLButtonElement).disabled = !s.paired
 }
 
+const esc = (s: string) =>
+  s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] as string)
+
+async function refreshMe(): Promise<void> {
+  const me = await window.aowa.me()
+  if (!me.paired) {
+    $('mytodos').innerHTML = '<p class="muted">Link the agent to see your daily/weekly tasks.</p>'
+    return
+  }
+  const todos = me.todos ?? []
+  const done = todos.filter((t) => t.done).length
+  const rows = todos
+    .slice(0, 12)
+    .map(
+      (t) =>
+        `<li><span class="tag">${t.cadence === 'weekly' ? 'W' : 'D'}</span>
+        <span class="name" style="${t.done ? 'text-decoration:line-through;opacity:.6' : ''}">${esc(t.title)}</span>
+        ${t.node ? `<span class="muted">${esc(t.node)}</span>` : ''}</li>`,
+    )
+    .join('')
+  const relicTotal = Object.values(me.relics ?? {}).reduce((a, b) => a + b, 0)
+  $('mytodos').innerHTML =
+    `<div class="sub">${done}/${todos.length} done · ${relicTotal} relics owned</div>` +
+    (rows ? `<ul class="list">${rows}</ul>` : '<p class="muted">No tasks.</p>')
+}
+
 async function initStatus(): Promise<void> {
-  renderStatus(await window.aowa.status())
-  window.aowa.onStatus(renderStatus)
+  const onStatus = (s: { paired: boolean }) => {
+    renderStatus(s)
+    void refreshMe()
+  }
+  onStatus(await window.aowa.status())
+  window.aowa.onStatus(onStatus)
 }
 
 function wireControls(): void {
@@ -56,5 +86,8 @@ function wireControls(): void {
 wireControls()
 void initStatus()
 void refresh()
-setInterval(() => void refresh(), 60_000) // fresh data
+setInterval(() => {
+  void refresh()
+  void refreshMe()
+}, 60_000) // fresh data
 setInterval(render, 1_000) // live countdowns

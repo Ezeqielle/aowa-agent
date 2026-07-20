@@ -48,6 +48,26 @@ export async function ingestInventory(
   return (await res.json()) as IngestResult
 }
 
+// Personal data the agent may read with its bearer token (backend #37).
+export interface Todo {
+  id: string
+  title: string
+  cadence: 'daily' | 'weekly'
+  detail?: string
+  node?: string
+  done: boolean
+}
+
+async function getWithToken<T>(path: string, token: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } })
+  if (res.status === 401) throw new UnauthorizedError()
+  if (!res.ok) throw new Error(`${path} ${res.status}`)
+  return (await res.json()) as T
+}
+
+export const fetchTodos = (token: string) => getWithToken<Todo[]>('/me/todos', token)
+export const fetchOwnedRelics = (token: string) => getWithToken<Record<string, number>>('/me/relics', token)
+
 // UnauthorizedError signals the token was revoked/invalid; the caller should drop
 // it and return to the unpaired state.
 export class UnauthorizedError extends Error {
