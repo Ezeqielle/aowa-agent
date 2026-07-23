@@ -2,9 +2,19 @@
 import { app } from 'electron'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import type { HotkeyBinding } from './hotkey'
+
+export interface Bounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
 
 interface State {
   token?: string
+  hotkey?: HotkeyBinding
+  overlayBounds?: Bounds
 }
 
 const file = () => join(app.getPath('userData'), 'agent.json')
@@ -27,3 +37,9 @@ export const clearToken = (): void => {
   delete s.token
   write(s)
 }
+
+export const loadHotkey = (): HotkeyBinding | null => read().hotkey ?? null
+export const saveHotkey = (h: HotkeyBinding): void => write({ ...read(), hotkey: h })
+
+export const loadOverlayBounds = (): Bounds | null => read().overlayBounds ?? null
+export const saveOverlayBounds = (b: Bounds): void => write({ ...read(), overlayBounds: b })

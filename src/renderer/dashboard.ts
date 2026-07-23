@@ -95,6 +95,47 @@ async function initStatus(): Promise<void> {
   window.aowa.onStatus(onStatus)
 }
 
+// Overlay-hotkey rebinding: click the button, then press a combo. Uses
+// KeyboardEvent.code so the binding is keyboard-layout independent.
+async function initHotkey(): Promise<void> {
+  const btn = $('hk-btn') as HTMLButtonElement
+  const info = await window.aowa.getHotkey()
+  btn.textContent = info.label
+  let capturing = false
+  const stop = () => {
+    capturing = false
+    btn.classList.remove('capturing')
+    window.removeEventListener('keydown', onKey, true)
+  }
+  const onKey = (ev: Event) => {
+    if (!capturing) return
+    const e = ev as KeyboardEvent
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.key === 'Escape') {
+      void window.aowa.getHotkey().then((i) => (btn.textContent = i.label))
+      stop()
+      return
+    }
+    // Wait for a non-modifier key so the combo has a real key.
+    if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return
+    void window.aowa
+      .setHotkey({ code: e.code, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, meta: e.metaKey })
+      .then((i) => (btn.textContent = i.label))
+    stop()
+  }
+  btn.addEventListener('click', () => {
+    if (capturing) {
+      stop()
+      return
+    }
+    capturing = true
+    btn.classList.add('capturing')
+    btn.textContent = 'Press keys…'
+    window.addEventListener('keydown', onKey, true)
+  })
+}
+
 async function initGepIndicator(): Promise<void> {
   const onGep = (s: GepState) => {
     const wasFresh = gep.lastUpdate
@@ -125,6 +166,7 @@ function wireControls(): void {
 
 wireControls()
 void initStatus()
+void initHotkey()
 void initGepIndicator()
 void refresh()
 setInterval(() => {

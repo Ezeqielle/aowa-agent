@@ -16,7 +16,9 @@ import { fetchOwnedRelics, fetchTodos, ingestInventory, pair, UnauthorizedError,
 import { normalizeInventory } from '../lib/inventory'
 import { extractPairCode } from '../lib/deeplink'
 import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
-import { clearToken, loadToken, saveToken } from './store'
+import { clearToken, loadHotkey, loadToken, saveHotkey, saveToken } from './store'
+import { DEFAULT_HOTKEY, hotkeyLabel, toAccelerator, type HotkeyBinding } from './hotkey'
+import { initOverlay, setOverlayHotkey } from './overlay'
 
 // ow-electron augments `app` with `.overwolf.packages`. Loosely typed here so
 // the file is resilient across package versions; tighten with
@@ -30,9 +32,13 @@ const owApp = app as unknown as {
         removeAllListeners?(): void
         setRequiredFeatures(gameId: number, features: string[] | null): Promise<unknown>
       }
+      overlay?: any
     }
   }
 }
+
+// Overlay toggle hotkey (loaded on ready, rebindable from the GUI).
+let hotkey: HotkeyBinding = DEFAULT_HOTKEY
 
 let dashboard: BrowserWindow | null = null
 let overlay: BrowserWindow | null = null
@@ -87,6 +93,47 @@ function toggleOverlay(): void {
   if (!overlay) createOverlay()
   else if (overlay.isVisible()) overlay.hide()
   else overlay.show()
+}
+
+// Options + loader for the Overwolf overlay-package (in-game) window. The HUD is
+// draggable via CSS (-webkit-app-region), so no OS titlebar is needed.
+function overlayBaseWindowOptions(): Record<string, unknown> {
+  return {
+    width: 340,
+    height: 520,
+    transparent: true,
+    frame: false,
+    resizable: true,
+    passthrough: 'noPassThrough',
+    webPreferences: { preload: join(__dirname, 'preload.js'), contextIsolation: true },
+  }
+}
+function loadOverlayWindow(win: {
+  window: { loadURL?(u: string): Promise<unknown>; loadFile?(p: string): Promise<unknown> }
+}): void {
+  const target = RENDERER('overlay')
+  if (target.startsWith('http')) void win.window.loadURL?.(target)
+  else void win.window.loadFile?.(target)
+}
+
+// Desktop-fallback global shortcut (in exclusive fullscreen the overlay package's
+// own hotkey takes over — see overlay.ts). Re-applied whenever the binding changes.
+function applyGlobalShortcut(): void {
+  globalShortcut.unregisterAll()
+  const accel = toAccelerator(hotkey)
+  if (!accel) return
+  try {
+    globalShortcut.register(accel, () => toggleOverlay())
+  } catch (e) {
+    console.error('[AOWA] globalShortcut register failed', accel, e)
+  }
+}
+
+function setHotkey(h: HotkeyBinding): void {
+  hotkey = h
+  saveHotkey(h)
+  applyGlobalShortcut() // desktop
+  setOverlayHotkey(h) // in-game (no-op if overlay package not ready)
 }
 
 function createTray(): void {
@@ -232,6 +279,11 @@ if (!app.requestSingleInstanceLock()) {
   })
   ipcMain.handle('aowa:status', () => status())
   ipcMain.handle('aowa:gep', () => gepState())
+  ipcMain.handle('aowa:hotkey', () => ({ hotkey, label: hotkeyLabel(hotkey) }))
+  ipcMain.handle('aowa:hotkey:set', (_e, h: HotkeyBinding) => {
+    setHotkey(h)
+    return { hotkey, label: hotkeyLabel(hotkey) }
+  })
   ipcMain.handle('aowa:open-aowa', () => shell.openExternal('https://aowa.ashguard.io/profile'))
   // Fetched in main (Node) so the renderer isn't blocked by CORS.
   ipcMain.handle('aowa:worldstate', async () => {
@@ -273,19 +325,30 @@ if (!app.requestSingleInstanceLock()) {
   }
 
   app.whenReady().then(() => {
+    hotkey = loadHotkey() ?? DEFAULT_HOTKEY
     try {
-      // The gep package object only exists once its 'ready' event fires — never
-      // touch owApp.overwolf.packages.gep synchronously at startup.
+      // Package objects only exist once their 'ready' event fires — never touch
+      // owApp.overwolf.packages.gep/.overlay synchronously at startup.
       owApp.overwolf.packages.on('ready', (_e: unknown, name: string, version: string) => {
-        console.log('[AOWA-GEP] package ready:', name, version)
+        console.log('[AOWA] package ready:', name, version)
         if (name === 'gep') initGep()
+        if (name === 'overlay') {
+          const overlayApi = owApp.overwolf.packages.overlay
+          if (overlayApi) {
+            initOverlay(overlayApi, {
+              hotkey,
+              baseWindowOptions: overlayBaseWindowOptions(),
+              loadOverlay: loadOverlayWindow,
+            })
+          }
+        }
       })
     } catch (e) {
-      console.error('[AOWA] GEP wiring failed (ok outside ow-electron):', e)
+      console.error('[AOWA] package wiring failed (ok outside ow-electron):', e)
     }
     createTray()
     createDashboard()
-    globalShortcut.register('Alt+Shift+A', toggleOverlay)
+    applyGlobalShortcut()
     handleDeepLink(process.argv) // cold-start deep link
   })
 

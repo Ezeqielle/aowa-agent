@@ -6,6 +6,17 @@ export interface GepState {
   gameRunning: boolean
   lastUpdate: number
 }
+export interface HotkeyBinding {
+  code: string
+  ctrl?: boolean
+  alt?: boolean
+  shift?: boolean
+  meta?: boolean
+}
+export interface HotkeyInfo {
+  hotkey: HotkeyBinding
+  label: string
+}
 import type { Cycle, WorldState } from '../lib/aowa-data'
 import type { Todo } from '../lib/api'
 
@@ -18,6 +29,8 @@ export interface MeData {
 export interface AowaBridge {
   status(): Promise<AgentStatus>
   gep(): Promise<GepState>
+  getHotkey(): Promise<HotkeyInfo>
+  setHotkey(h: HotkeyBinding): Promise<HotkeyInfo>
   pair(code: string): Promise<{ ok: boolean; error?: string }>
   unpair(): Promise<void>
   openAowa(): Promise<void>

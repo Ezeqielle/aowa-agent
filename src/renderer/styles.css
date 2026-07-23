@@ -30,7 +30,25 @@ button.primary { background: var(--accent); border-color: var(--accent); }
 .cycles { display:flex; flex-wrap:wrap; gap:.5rem; }
 .cycle { font-size:.78rem; background:var(--panel2); border:1px solid var(--border); border-radius:999px; padding:.15rem .55rem; }
 .err { color:#ef4444; font-size:.8rem; }
-/* overlay */
-body.overlay { background: rgba(15,17,23,.86); }
-.overlay-wrap { padding:.7rem .8rem; font-size:.82rem; }
-.overlay-wrap h2 { font-size:.7rem; margin:.6rem 0 .3rem; }
+/* overlay hotkey control (dashboard) */
+.hotkeyrow { display:flex; align-items:center; gap:.6rem; margin-bottom:1rem; font-size:.85rem; }
+.hk { font-family: ui-monospace, monospace; font-weight:700; letter-spacing:.03em; border-color:var(--accent); color:var(--fg); min-width:8.5rem; text-align:center; }
+.hk.capturing { background:var(--accent); border-color:var(--accent); animation:hkpulse 1s ease-in-out infinite; }
+.hk-hint { font-size:.78rem; }
+@keyframes hkpulse { 50% { opacity:.6; } }
+
+/* in-game overlay HUD (transparent window; the .hud card is the visible surface) */
+body.overlay { background: transparent; overflow: hidden; }
+.hud {
+  margin:.4rem; padding:.7rem .85rem; border-radius:14px; font-size:.8rem;
+  background: linear-gradient(180deg, rgba(21,24,36,.94), rgba(15,17,23,.94));
+  border:1px solid var(--border); box-shadow: 0 10px 34px rgba(0,0,0,.55);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.hud-head { display:flex; align-items:center; justify-content:space-between; gap:.6rem;
+  -webkit-app-region: drag; cursor: grab; margin-bottom:.5rem; }
+.hud .brand { font-weight:800; letter-spacing:.16em; color:var(--accent); font-size:.9rem; }
+.hud-hint { font-size:.64rem; color:var(--muted); -webkit-app-region: no-drag; }
+.hud section { margin-top:.55rem; }
+.hud h3 { font-size:.62rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted);
+  margin:0 0 .35rem; padding-top:.5rem; border-top:1px solid var(--border); }

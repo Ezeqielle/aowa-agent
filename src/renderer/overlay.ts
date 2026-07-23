@@ -24,6 +24,16 @@ async function refresh(): Promise<void> {
   }
 }
 
+async function initHint(): Promise<void> {
+  try {
+    const info = await window.aowa.getHotkey()
+    $('o-hint').textContent = `${info.label} to toggle · drag to move`
+  } catch {
+    $('o-hint').textContent = 'drag to move'
+  }
+}
+
+void initHint()
 void refresh()
 setInterval(() => void refresh(), 60_000)
 setInterval(render, 1_000)
