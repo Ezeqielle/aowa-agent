@@ -97,6 +97,45 @@ sequenceDiagram
 CORS note: the renderer never calls AOWA directly (Chromium would block it);
 worldState is fetched in the **main** process (Node, no CORS) and passed over IPC.
 
+## For testers — run from source (Windows)
+No installer yet: run the agent straight from the repo. This uses **Dev Mode**,
+so the gaming packages (GEP inventory + overlay) work with just the dev key.
+
+**Prerequisites:** Windows 10/11, [Node.js](https://nodejs.org) 20+, [Git](https://git-scm.com),
+and Warframe installed. **You'll be given an `OW_DEV_KEY` separately.**
+
+```powershell
+# 1. Get the code
+git clone https://gitlab.com/ashguard-dev/aowa-agent.git
+cd aowa-agent
+
+# 2. Install dependencies (downloads the ow-electron runtime)
+npm install
+
+# 3. Create a .env file with the key you were given (see .env.example)
+#    The file must contain exactly this line:
+#    OW_DEV_KEY=<the-key-you-were-given>
+copy .env.example .env
+notepad .env
+
+# 4. Build + launch (Dev Mode)
+npm run start:dev
+```
+
+Then in the AOWA window: **Link agent** (opens AOWA in your browser → log in →
+it pairs automatically), or paste the one-time code from AOWA → Profile.
+Launch Warframe and the dashboard's **Game data** dot turns green once inventory
+starts flowing; press **Alt + Shift + A** in-game to toggle the overlay.
+
+Notes:
+- The `OW_DEV_KEY` is a **temporary** Overwolf credential tied to the developer
+  account. If startup logs `invalid verification`, the key expired or isn't
+  active yet — ping the maintainer for a fresh one.
+- The console prints `[AOWA-GEP] …` (inventory) and `[AOWA-EE] …` (EE.log) lines
+  — handy to copy back to the maintainer while things are still being tuned.
+- To stop: quit from the tray icon (it keeps running there when you close the
+  window).
+
 ## Build & run (Windows)
 ```powershell
 npm install            # pulls @overwolf/ow-electron (+ builder, packages types)
