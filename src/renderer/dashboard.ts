@@ -1,12 +1,39 @@
 import type { Cycle, WorldState } from '../lib/aowa-data'
+import type { GepState } from './global'
 import { archonHtml, baroHtml, cyclesHtml, fissuresHtml, sortieHtml } from './panels'
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement
 
 let ws: WorldState | null = null
 let cycles: Cycle[] = []
+let gep: GepState = { gameRunning: false, lastUpdate: 0 }
+
+function ago(ms: number): string {
+  const s = Math.round(ms / 1000)
+  if (s < 60) return `${s}s ago`
+  const m = Math.round(s / 60)
+  return m < 60 ? `${m}m ago` : `${Math.round(m / 60)}h ago`
+}
+
+// Live in-game data indicator. Green = receiving GEP updates; amber = Warframe
+// detected but no data yet; grey = waiting for the game.
+function renderGep(): void {
+  const dot = $('gep-dot')
+  const text = $('gep-text')
+  const fresh = gep.lastUpdate > 0 && Date.now() - gep.lastUpdate < 120_000
+  dot.classList.toggle('on', fresh)
+  dot.classList.toggle('warn', gep.gameRunning && !fresh)
+  if (gep.lastUpdate > 0) {
+    text.textContent = fresh
+      ? `Game data: live · ${ago(Date.now() - gep.lastUpdate)}`
+      : `Game data: idle · last ${ago(Date.now() - gep.lastUpdate)}`
+  } else {
+    text.textContent = gep.gameRunning ? 'Warframe detected — awaiting data' : 'Game data: waiting for Warframe'
+  }
+}
 
 function render(): void {
+  renderGep()
   if (!ws) return
   $('baro').innerHTML = baroHtml(ws)
   $('fissures').innerHTML = fissuresHtml(ws)
@@ -68,6 +95,19 @@ async function initStatus(): Promise<void> {
   window.aowa.onStatus(onStatus)
 }
 
+async function initGepIndicator(): Promise<void> {
+  const onGep = (s: GepState) => {
+    const wasFresh = gep.lastUpdate
+    gep = s
+    renderGep()
+    // A fresh inventory push means the server just ingested new data — reflect it.
+    if (s.lastUpdate > wasFresh) void refreshMe()
+  }
+  gep = await window.aowa.gep()
+  renderGep()
+  window.aowa.onGep(onGep)
+}
+
 function wireControls(): void {
   $('open-aowa').addEventListener('click', () => void window.aowa.openAowa())
   $('unpair').addEventListener('click', () => void window.aowa.unpair())
@@ -85,6 +125,7 @@ function wireControls(): void {
 
 wireControls()
 void initStatus()
+void initGepIndicator()
 void refresh()
 setInterval(() => {
   void refresh()

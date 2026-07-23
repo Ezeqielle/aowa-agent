@@ -11,7 +11,7 @@
 // against the ow-electron API and typechecks once deps are installed.
 import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut } from 'electron'
 import { join } from 'node:path'
-import { DEBUG_GEP, GEP_FEATURES, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
+import { DEBUG_GEP, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
 import { fetchOwnedRelics, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
 import { normalizeInventory } from '../lib/inventory'
 import { extractPairCode } from '../lib/deeplink'
@@ -25,9 +25,10 @@ const owApp = app as unknown as {
   overwolf: {
     packages: {
       on(event: string, cb: (...args: any[]) => void): void
-      gep: {
+      gep?: {
         on(event: string, cb: (...args: any[]) => void): void
-        setRequiredFeatures(gameId: number, features: string[]): Promise<unknown>
+        removeAllListeners?(): void
+        setRequiredFeatures(gameId: number, features: string[] | null): Promise<unknown>
       }
     }
   }
@@ -158,21 +159,56 @@ async function flush(): Promise<void> {
   }
 }
 
+// ---- GEP capture state (surfaced to the UI) ------------------------------
+// gameRunning: Warframe is detected + GEP enabled. lastUpdate: epoch-ms of the
+// last inventory info push (the app is "receiving game data" when this is recent).
+const gep = { gameRunning: false, lastUpdate: 0 as number }
+
+function gepState(): { gameRunning: boolean; lastUpdate: number } {
+  return { gameRunning: gep.gameRunning, lastUpdate: gep.lastUpdate }
+}
+function broadcastGep(): void {
+  const s = gepState()
+  for (const w of [dashboard, overlay]) w?.webContents.send('aowa:gep', s)
+}
+
 function initGep(): void {
-  const gep = owApp.overwolf.packages.gep
-  gep.on('game-detected', (e: { enable(): void }, gameId: number) => {
-    if (gameId !== WARFRAME_GAME_ID) return
-    e.enable()
-    void gep.setRequiredFeatures(WARFRAME_GAME_ID, [...GEP_FEATURES])
+  const api = owApp.overwolf.packages.gep
+  if (!api) return
+  api.removeAllListeners?.()
+
+  api.on('game-detected', (e: { enable(): void }, gameId: number, name?: string) => {
+    console.log('[AOWA-GEP] game-detected', gameId, name)
+    // During discovery, enable Warframe by id OR name so we can confirm the id.
+    if (gameId === WARFRAME_GAME_ID || /warframe/i.test(String(name ?? ''))) {
+      e.enable()
+      // null = all available features (discovery); narrow to GEP_FEATURES later.
+      void api.setRequiredFeatures(gameId, null)
+      gep.gameRunning = true
+      broadcastGep()
+    }
   })
-  gep.on('new-info-update', (_e: unknown, gameId: number, info: Record<string, unknown>) => {
-    if (gameId !== WARFRAME_GAME_ID) return
-    if (DEBUG_GEP) console.log('[AOWA-GEP] new-info-update', JSON.stringify(info))
+
+  api.on('new-info-update', (_e: unknown, gameId: number, info: Record<string, unknown>) => {
+    if (DEBUG_GEP) console.log('[AOWA-GEP] new-info-update', gameId, JSON.stringify(info))
+    gep.gameRunning = true
+    gep.lastUpdate = Date.now()
+    broadcastGep()
     const items = normalizeInventory(info)
     if (items.length) {
       pending = items
       scheduleFlush()
     }
+  })
+
+  api.on('game-exit', (_e: unknown, gameId: number, name?: string) => {
+    console.log('[AOWA-GEP] game-exit', gameId, name)
+    gep.gameRunning = false
+    broadcastGep()
+  })
+
+  api.on('error', (_e: unknown, gameId: number, err: unknown) => {
+    console.error('[AOWA-GEP] error', gameId, err)
   })
 }
 
@@ -195,6 +231,7 @@ if (!app.requestSingleInstanceLock()) {
     broadcastStatus()
   })
   ipcMain.handle('aowa:status', () => status())
+  ipcMain.handle('aowa:gep', () => gepState())
   ipcMain.handle('aowa:open-aowa', () => shell.openExternal('https://aowa.ashguard.io/profile'))
   // Fetched in main (Node) so the renderer isn't blocked by CORS.
   ipcMain.handle('aowa:worldstate', async () => {
@@ -220,10 +257,14 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     try {
-      owApp.overwolf.packages.on('ready', () => initGep())
-      initGep()
+      // The gep package object only exists once its 'ready' event fires — never
+      // touch owApp.overwolf.packages.gep synchronously at startup.
+      owApp.overwolf.packages.on('ready', (_e: unknown, name: string, version: string) => {
+        console.log('[AOWA-GEP] package ready:', name, version)
+        if (name === 'gep') initGep()
+      })
     } catch (e) {
-      console.error('[AOWA] GEP init failed (ok outside ow-electron):', e)
+      console.error('[AOWA] GEP wiring failed (ok outside ow-electron):', e)
     }
     createTray()
     createDashboard()

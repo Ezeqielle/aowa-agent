@@ -2,6 +2,10 @@
 export interface AgentStatus {
   paired: boolean
 }
+export interface GepState {
+  gameRunning: boolean
+  lastUpdate: number
+}
 import type { Cycle, WorldState } from '../lib/aowa-data'
 import type { Todo } from '../lib/api'
 
@@ -13,12 +17,14 @@ export interface MeData {
 
 export interface AowaBridge {
   status(): Promise<AgentStatus>
+  gep(): Promise<GepState>
   pair(code: string): Promise<{ ok: boolean; error?: string }>
   unpair(): Promise<void>
   openAowa(): Promise<void>
   worldState(): Promise<{ ws: WorldState; cycles: Cycle[] }>
   me(): Promise<MeData>
   onStatus(cb: (s: AgentStatus) => void): void
+  onGep(cb: (s: GepState) => void): void
 }
 declare global {
   interface Window {
