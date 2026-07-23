@@ -255,6 +255,23 @@ if (!app.requestSingleInstanceLock()) {
     }
   })
 
+  // Dev-mode credential check. owepm verifies OW_DEV_KEY (temp, no-console devs)
+  // or OW_CLI_EMAIL+OW_CLI_API_KEY (console devs); without a valid one the
+  // gaming packages fail with "invalid verification". This log distinguishes
+  // "key missing from env" (run `npm run start:dev`, not `npm start`) from
+  // "key present but rejected" (developer status Pending / key expired).
+  {
+    const k = process.env.OW_DEV_KEY
+    console.log(
+      '[AOWA] dev-mode credential:',
+      k
+        ? `OW_DEV_KEY present (…${k.trim().slice(-4)}, len ${k.trim().length})`
+        : process.env.OW_CLI_API_KEY
+          ? 'OW_CLI_EMAIL/OW_CLI_API_KEY present'
+          : 'NONE in env — gaming packages will fail verification. Put OW_DEV_KEY in .env and run `npm run start:dev` (or F5).',
+    )
+  }
+
   app.whenReady().then(() => {
     try {
       // The gep package object only exists once its 'ready' event fires — never
