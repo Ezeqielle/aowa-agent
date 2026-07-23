@@ -1,5 +1,5 @@
 import type { Cycle, WorldState } from '../lib/aowa-data'
-import type { GepState } from './global'
+import type { Activity, GepState } from './global'
 import { archonHtml, baroHtml, cyclesHtml, fissuresHtml, sortieHtml } from './panels'
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement
@@ -136,6 +136,29 @@ async function initHotkey(): Promise<void> {
   })
 }
 
+function renderActivity(list: Activity[]): void {
+  if (!list.length) {
+    $('activity').innerHTML = '<p class="muted">Waiting for in-game activity (EE.log)…</p>'
+    return
+  }
+  const rows = list
+    .slice(0, 12)
+    .map(
+      (a) =>
+        `<li><span class="tag">${esc(a.kind)}</span>
+        <span class="name">${esc(a.label)}</span>
+        ${a.detail ? `<span class="muted">${esc(a.detail)}</span>` : ''}
+        <span class="time">${ago(Date.now() - a.at)}</span></li>`,
+    )
+    .join('')
+  $('activity').innerHTML = `<ul class="list">${rows}</ul>`
+}
+
+async function initActivity(): Promise<void> {
+  renderActivity(await window.aowa.activity())
+  window.aowa.onActivity(renderActivity)
+}
+
 async function initGepIndicator(): Promise<void> {
   const onGep = (s: GepState) => {
     const wasFresh = gep.lastUpdate
@@ -167,6 +190,7 @@ function wireControls(): void {
 wireControls()
 void initStatus()
 void initHotkey()
+void initActivity()
 void initGepIndicator()
 void refresh()
 setInterval(() => {

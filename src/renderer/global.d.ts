@@ -17,6 +17,12 @@ export interface HotkeyInfo {
   hotkey: HotkeyBinding
   label: string
 }
+export interface Activity {
+  kind: string
+  label: string
+  detail?: string
+  at: number
+}
 import type { Cycle, WorldState } from '../lib/aowa-data'
 import type { Todo } from '../lib/api'
 
@@ -29,6 +35,7 @@ export interface MeData {
 export interface AowaBridge {
   status(): Promise<AgentStatus>
   gep(): Promise<GepState>
+  activity(): Promise<Activity[]>
   getHotkey(): Promise<HotkeyInfo>
   setHotkey(h: HotkeyBinding): Promise<HotkeyInfo>
   pair(code: string): Promise<{ ok: boolean; error?: string }>
@@ -38,6 +45,7 @@ export interface AowaBridge {
   me(): Promise<MeData>
   onStatus(cb: (s: AgentStatus) => void): void
   onGep(cb: (s: GepState) => void): void
+  onActivity(cb: (a: Activity[]) => void): void
 }
 declare global {
   interface Window {

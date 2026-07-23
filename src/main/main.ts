@@ -19,6 +19,8 @@ import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
 import { clearToken, loadHotkey, loadToken, saveHotkey, saveToken } from './store'
 import { DEFAULT_HOTKEY, hotkeyLabel, toAccelerator, type HotkeyBinding } from './hotkey'
 import { initOverlay, setOverlayHotkey } from './overlay'
+import { startEELogTail } from './eelog'
+import type { EELogEvent } from '../lib/eelog'
 
 // ow-electron augments `app` with `.overwolf.packages`. Loosely typed here so
 // the file is resilient across package versions; tighten with
@@ -219,6 +221,27 @@ function broadcastGep(): void {
   for (const w of [dashboard, overlay]) w?.webContents.send('aowa:gep', s)
 }
 
+// ---- EE.log activity (surfaced to the UI) --------------------------------
+type Activity = { kind: string; label: string; detail?: string; at: number }
+const activity: Activity[] = [] // newest first, capped
+const ACTIVITY_MAX = 20
+
+function broadcastActivity(): void {
+  for (const w of [dashboard, overlay]) w?.webContents.send('aowa:activity', activity)
+}
+function pushActivity(e: EELogEvent): void {
+  activity.unshift({ kind: e.kind, label: e.label, detail: e.detail, at: Date.now() })
+  if (activity.length > ACTIVITY_MAX) activity.length = ACTIVITY_MAX
+  broadcastActivity()
+}
+
+// Default EE.log location on Windows; override with EE_LOG_PATH.
+function eeLogPath(): string {
+  if (process.env.EE_LOG_PATH) return process.env.EE_LOG_PATH
+  const localAppData = process.env.LOCALAPPDATA || join(app.getPath('home'), 'AppData', 'Local')
+  return join(localAppData, 'Warframe', 'EE.log')
+}
+
 function initGep(): void {
   const api = owApp.overwolf.packages.gep
   if (!api) return
@@ -279,6 +302,7 @@ if (!app.requestSingleInstanceLock()) {
   })
   ipcMain.handle('aowa:status', () => status())
   ipcMain.handle('aowa:gep', () => gepState())
+  ipcMain.handle('aowa:activity', () => activity)
   ipcMain.handle('aowa:hotkey', () => ({ hotkey, label: hotkeyLabel(hotkey) }))
   ipcMain.handle('aowa:hotkey:set', (_e, h: HotkeyBinding) => {
     setHotkey(h)
@@ -349,6 +373,14 @@ if (!app.requestSingleInstanceLock()) {
     createTray()
     createDashboard()
     applyGlobalShortcut()
+    try {
+      startEELogTail(eeLogPath(), (e) => {
+        console.log('[AOWA-EE] event', e.kind, e.label)
+        pushActivity(e)
+      })
+    } catch (e) {
+      console.error('[AOWA-EE] tail failed to start', e)
+    }
     handleDeepLink(process.argv) // cold-start deep link
   })
 

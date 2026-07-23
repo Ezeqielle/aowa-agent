@@ -20,3 +20,10 @@ export const INGEST_DEBOUNCE_MS = 4000
 
 // Log raw GEP payloads to help capture Warframe's real inventory shape.
 export const DEBUG_GEP = true
+
+// Log every parsed EE.log line to help capture Warframe's real log wording
+// (so the rules in src/lib/eelog.ts can be tuned to the live format).
+export const DEBUG_EE = true
+
+// How often the EE.log tailer polls for appended lines.
+export const EE_POLL_MS = 2000

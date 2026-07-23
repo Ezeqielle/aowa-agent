@@ -19,10 +19,17 @@ export interface HotkeyInfo {
   hotkey: HotkeyBinding
   label: string
 }
+export interface Activity {
+  kind: string
+  label: string
+  detail?: string
+  at: number
+}
 
 contextBridge.exposeInMainWorld('aowa', {
   status: (): Promise<AgentStatus> => ipcRenderer.invoke('aowa:status'),
   gep: (): Promise<GepState> => ipcRenderer.invoke('aowa:gep'),
+  activity: (): Promise<Activity[]> => ipcRenderer.invoke('aowa:activity'),
   getHotkey: (): Promise<HotkeyInfo> => ipcRenderer.invoke('aowa:hotkey'),
   setHotkey: (h: HotkeyBinding): Promise<HotkeyInfo> => ipcRenderer.invoke('aowa:hotkey:set', h),
   pair: (code: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('aowa:pair', code),
@@ -35,5 +42,8 @@ contextBridge.exposeInMainWorld('aowa', {
   },
   onGep: (cb: (s: GepState) => void) => {
     ipcRenderer.on('aowa:gep', (_e, s: GepState) => cb(s))
+  },
+  onActivity: (cb: (a: Activity[]) => void) => {
+    ipcRenderer.on('aowa:activity', (_e, a: Activity[]) => cb(a))
   },
 })
