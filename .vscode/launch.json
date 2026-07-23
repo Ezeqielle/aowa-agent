@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "OW-Electron: Main Process",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/ow-electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/ow-electron.cmd"
+      },
+      "args": ["."],
+      "outputCapture": "std",
+      "preLaunchTask": "npm: build",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "//": "OW_DEV_KEY (and optional OW_CLI_EMAIL/OW_CLI_API_KEY) come from .env — see .env.example. Dev Mode loads the gaming packages without signing; ow-electron >= 39.8.10, Windows only."
+      }
+    }
+  ]
+}

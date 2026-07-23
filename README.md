@@ -103,7 +103,26 @@ npm install            # pulls @overwolf/ow-electron (+ builder, packages types)
 npm run build          # renderer (vite) + main (tsc → dist/main)
 npm start              # launches ow-electron
 ```
-- **Dev Mode** runs the gaming packages (GEP/overlay) locally **without signing**.
+
+### Dev Mode (loads GEP/overlay without signing)
+The gaming packages (GEP, Overlay, Recorder) **won't load** in an unsigned build
+unless Dev Mode is enabled. Requirements: **`@overwolf/ow-electron >= 39.8.10`**,
+**Windows only**, and a dev credential in the environment:
+- **`OW_DEV_KEY`** — a temporary key approved devs (without Console access)
+  request from the Overwolf developer portal, **or**
+- **`OW_CLI_EMAIL` + `OW_CLI_API_KEY`** — for Console developers (API key from
+  Overwolf Console → Profile → API Keys).
+
+Put the key in a local `.env` (gitignored — see `.env.example`):
+```
+OW_DEV_KEY=<your-key>
+```
+Then either:
+- **VS Code** — press **F5** (the `OW-Electron: Main Process` config in
+  `.vscode/launch.json` reads `.env` via `envFile`), or
+- **Terminal** — `npm run start:dev` (loads `.env` through `dotenv-cli`), or
+  `set OW_DEV_KEY=<your-key>` then `npm start`.
+
 - **Production** distribution needs your **own code-signing certificate**
   (DigiCert/Sectigo, etc.) — packaged via `npm run dist` (ow-electron-builder).
   No Overwolf store review required.
@@ -123,7 +142,9 @@ AOWA → Profile → **Link agent** opens `aowa://pair?code=…` → the app pai
 dashboard as a fallback.
 
 ## Next
-- On-device GEP capture → finalize `normalizeInventory()`.
-- Personal data in the UI (todos/relics/builds) needs the AOWA agent token to be
-  accepted on those `/api/me/*` reads (small backend addition).
+- On-device GEP capture (Dev Mode enabled) → finalize `normalizeInventory()`
+  and confirm the Warframe game id / feature keys against the real payload.
 - Code-signing cert → `npm run dist` → ship.
+
+Done: personal data in the dashboard ("My Todos" card) reads `/api/me/*` with the
+stored agent token — the backend accepts the bearer token on those reads (#37).

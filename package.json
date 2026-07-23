@@ -11,6 +11,7 @@
     "build:main": "tsc -p tsconfig.node.json",
     "build": "npm run build:renderer && npm run build:main",
     "start": "npm run build && ow-electron .",
+    "start:dev": "npm run build && dotenv -e .env -- ow-electron .",
     "dev": "vite",
     "dist": "npm run build && ow-electron-builder"
   },
@@ -18,12 +19,13 @@
     "packages": ["gep", "overlay"]
   },
   "devDependencies": {
-    "@overwolf/ow-electron": "^34.0.0",
-    "@overwolf/ow-electron-builder": "^25.0.0",
+    "@overwolf/ow-electron": "^39.8.10",
+    "@overwolf/ow-electron-builder": "^26.9.0",
     "@overwolf/ow-electron-packages-types": "^1.0.0",
+    "dotenv-cli": "^8.0.0",
     "typescript": "^5.6.0",
     "vite": "^6.0.0",
     "vitest": "^2.1.0"
   },
-  "//": "GEP/overlay are gaming packages declared in the overwolf.packages array (docs: dev.overwolf.com/ow-electron). Dev Mode runs them locally without signing; production distribution needs your own code-signing certificate."
+  "//": "GEP/overlay are gaming packages declared in the overwolf.packages array (docs: dev.overwolf.com/ow-electron). Dev Mode (ow-electron >= 39.8.10, Windows only) runs them locally without signing when OW_DEV_KEY is set in the env; production distribution needs your own code-signing certificate."
 }
