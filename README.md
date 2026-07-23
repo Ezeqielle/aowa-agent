@@ -106,7 +106,7 @@ and Warframe installed. **You'll be given an `OW_DEV_KEY` separately.**
 
 ```powershell
 # 1. Get the code
-git clone https://gitlab.com/ashguard-dev/aowa-agent.git
+git clone https://github.com/Ezeqielle/aowa-agent.git
 cd aowa-agent
 
 # 2. Install dependencies (downloads the ow-electron runtime)
