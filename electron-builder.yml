@@ -1,0 +1,41 @@
+# ow-electron-builder / electron-builder config for the AOWA Agent installer.
+# Build with `npm run dist` (runs `npm run build` then `ow-electron-builder`).
+# ow-electron-builder bundles the ow-electron runtime + the overwolf.packages
+# (gep, overlay) declared in package.json.
+appId: io.ashguard.aowa-agent
+productName: AOWA Agent
+copyright: © Ashguard
+
+directories:
+  output: release
+  buildResources: build
+
+# App code only — ow-electron-builder adds the ow-electron runtime itself.
+files:
+  - dist/**/*
+  - public/**/*
+  - package.json
+
+# Register the aowa:// deep link so the installed app handles one-click pairing.
+protocols:
+  - name: AOWA
+    schemes:
+      - aowa
+
+win:
+  target:
+    - nsis
+  icon: public/icons/icon.ico
+  artifactName: ${productName}-Setup-${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: AOWA Agent
+  # Overwolf gaming packages load in production only when the exe is
+  # code-signed. Provide signing via env at build time (electron-builder):
+  #   CSC_LINK      = path/URL to your .pfx     CSC_KEY_PASSWORD = its password
+  # Without a cert the installer still builds, but GEP/overlay stay dev-only.

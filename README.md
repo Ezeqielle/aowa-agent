@@ -123,9 +123,24 @@ Then either:
 - **Terminal** — `npm run start:dev` (loads `.env` through `dotenv-cli`), or
   `set OW_DEV_KEY=<your-key>` then `npm start`.
 
-- **Production** distribution needs your **own code-signing certificate**
-  (DigiCert/Sectigo, etc.) — packaged via `npm run dist` (ow-electron-builder).
-  No Overwolf store review required.
+## Installer (`npm run dist`)
+Produces a Windows NSIS installer under `release/` via ow-electron-builder
+(config in `electron-builder.yml`): desktop + start-menu shortcuts, choosable
+install dir, and `aowa://` deep-link registration for one-click pairing.
+
+**Signing / gaming packages.** The Overwolf gaming packages (GEP, Overlay,
+Recorder) load in a distributed build **only when the exe is code-signed** —
+Overwolf signs package integrity and you sign the exe with your own cert. Supply
+it to electron-builder at build time:
+```
+set CSC_LINK=path-or-url-to-your.pfx
+set CSC_KEY_PASSWORD=...
+npm run dist
+```
+Without a cert the installer still builds and the desktop UI works, but GEP/
+overlay stay **dev-only** (Dev Mode + `OW_DEV_KEY`, above). A temporary
+`OW_DEV_KEY` is **not** a substitute for a signed build and must not be shipped
+to end users.
 
 Verify on any OS (no ow-electron needed): `npm run test` (deeplink + inventory)
 and `npx tsc -p tsconfig.web.json --noEmit` + `npx vite build` (renderer).
