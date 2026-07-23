@@ -14,7 +14,7 @@
     "start": "npm run build && ow-electron .",
     "start:dev": "npm run build && dotenv -e .env -- ow-electron .",
     "dev": "vite",
-    "dist": "npm run build && ow-electron-builder"
+    "dist": "npm run build && ow-electron-builder --win"
   },
   "overwolf": {
     "packages": ["gep", "overlay"]
