@@ -5,7 +5,8 @@
     "moduleResolution": "node",
     "lib": ["ES2022"],
     "types": ["node", "@overwolf/ow-electron"],
-    "outDir": "dist/main",
+    "rootDir": "src",
+    "outDir": "dist",
     "noEmit": false
   },
   "include": ["src/main", "src/lib"],
