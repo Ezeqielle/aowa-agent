@@ -11,7 +11,7 @@
 // against the ow-electron API and typechecks once deps are installed.
 import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut } from 'electron'
 import { join } from 'node:path'
-import { DEBUG_GEP, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
+import { DEBUG_GEP, GEP_FEATURES, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
 import { fetchOwnedRelics, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
 import { findInventoryValue, normalizeInventory } from '../lib/inventory'
 import { extractPairCode } from '../lib/deeplink'
@@ -256,8 +256,11 @@ function initGep(): void {
     // During discovery, enable Warframe by id OR name so we can confirm the id.
     if (gameId === WARFRAME_GAME_ID || /warframe/i.test(String(name ?? ''))) {
       e.enable()
-      // null = all available features (discovery); narrow to GEP_FEATURES later.
-      void api.setRequiredFeatures(gameId, null)
+      // Explicitly request the real features (match_info carries `inventory`).
+      // `null` (all) did NOT activate match_info on-device — only game_info fired.
+      void Promise.resolve(api.setRequiredFeatures(gameId, [...GEP_FEATURES]))
+        .then((r) => console.log('[AOWA-GEP] setRequiredFeatures', JSON.stringify(GEP_FEATURES), '→', JSON.stringify(r)))
+        .catch((err) => console.error('[AOWA-GEP] setRequiredFeatures failed', err))
       gep.gameRunning = true
       broadcastGep()
     }

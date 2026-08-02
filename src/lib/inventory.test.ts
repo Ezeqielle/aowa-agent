@@ -17,6 +17,16 @@ describe('normalizeInventory', () => {
     expect(findInventoryValue({ a: { b: { inventory: 'x' } } })).toBe('x')
     expect(findInventoryValue({ nope: 1 })).toBeUndefined()
   })
+  it('handles the real ow-electron flat shape {feature,key,value}', () => {
+    // Confirmed on-device: GEP emits e.g.
+    // {gameId,feature:"match_info",category:"match_info",key:"inventory",value:…}
+    const info = { gameId: 8954, feature: 'match_info', category: 'match_info', key: 'inventory', value: [{ name: 'Lith K9 Relic', count: 4 }] }
+    expect(findInventoryValue(info)).toEqual([{ name: 'Lith K9 Relic', count: 4 }])
+    expect(normalizeInventory(info)).toEqual([{ name: 'Lith K9 Relic', count: 4 }])
+    // A non-inventory flat update (e.g. username) yields nothing.
+    expect(findInventoryValue({ feature: 'game_info', key: 'username', value: 'Ezeqielle' })).toBeUndefined()
+    expect(normalizeInventory({ feature: 'game_info', key: 'username', value: 'Ezeqielle' })).toEqual([])
+  })
   it('handles an array of {name,count}', () => {
     const got = normalizeInventory({ inventory: [{ name: 'Excalibur', count: 1 }, { name: 'Axi A1 Relic', count: 3 }] })
     expect(got).toEqual([{ name: 'Excalibur', count: 1 }, { name: 'Axi A1 Relic', count: 3 }])

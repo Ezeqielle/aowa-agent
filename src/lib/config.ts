@@ -11,9 +11,11 @@ export const URL_SCHEME = 'aowa'
 // list (`overwolf/ow-electron-packages-types`: `Warframe = 8954`).
 export const WARFRAME_GAME_ID = 8954
 
-// GEP features to request. Warframe's GEP is narrow; inventory + game_info are
-// what AOWA consumes. Confirm exact feature keys on-device.
-export const GEP_FEATURES = ['inventory', 'game_info'] as const
+// GEP *features* to request (confirmed from the live registry
+// game-events-status.overwolf.com/8954_prod.json). Note `inventory` is a KEY
+// under the `match_info` feature — not a feature itself — so we must request
+// `match_info`, not `inventory`. `game_info` gives the username.
+export const GEP_FEATURES = ['match_info', 'game_info'] as const
 
 // Coalesce bursts of inventory updates into one POST.
 export const INGEST_DEBOUNCE_MS = 4000

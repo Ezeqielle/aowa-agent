@@ -16,6 +16,11 @@ import type { IngestItem } from './api'
 export function findInventoryValue(info: unknown, depth = 4): unknown {
   if (info == null || typeof info !== 'object' || depth < 0) return undefined
   const obj = info as Record<string, unknown>
+  // ow-electron delivers each info-update flat: { feature, category, key, value }.
+  // Confirmed on-device — so the inventory arrives as { key:'inventory', value }.
+  if (typeof obj['key'] === 'string' && 'value' in obj) {
+    return String(obj['key']).toLowerCase() === 'inventory' ? obj['value'] : undefined
+  }
   if ('inventory' in obj && obj['inventory'] != null) return obj['inventory']
   for (const v of Object.values(obj)) {
     if (v && typeof v === 'object') {
