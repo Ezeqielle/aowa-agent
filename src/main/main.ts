@@ -13,7 +13,7 @@ import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut } from '
 import { join } from 'node:path'
 import { DEBUG_GEP, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
 import { fetchOwnedRelics, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
-import { normalizeInventory } from '../lib/inventory'
+import { findInventoryValue, normalizeInventory } from '../lib/inventory'
 import { extractPairCode } from '../lib/deeplink'
 import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
 import { clearToken, loadHotkey, loadToken, saveHotkey, saveToken } from './store'
@@ -264,7 +264,23 @@ function initGep(): void {
   })
 
   api.on('new-info-update', (_e: unknown, gameId: number, info: Record<string, unknown>) => {
-    if (DEBUG_GEP) console.log('[AOWA-GEP] new-info-update', gameId, JSON.stringify(info))
+    // Warframe GEP publishes `match_info.inventory` (confirmed live) but with no
+    // sample_data — so log every update's shape unconditionally until we've
+    // captured the real payload. Full JSON when DEBUG_GEP, else a compact key map.
+    if (DEBUG_GEP) {
+      console.log('[AOWA-GEP] new-info-update', gameId, JSON.stringify(info))
+    } else {
+      const shape: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(info)) {
+        shape[k] = v && typeof v === 'object' ? Object.keys(v as object) : typeof v
+      }
+      console.log('[AOWA-GEP] info', gameId, JSON.stringify(shape))
+    }
+    const inv = findInventoryValue(info)
+    if (inv !== undefined) {
+      const s = typeof inv === 'string' ? inv : JSON.stringify(inv)
+      console.log('[AOWA-GEP] inventory raw:', s.length > 4000 ? s.slice(0, 4000) + '…' : s)
+    }
     gep.gameRunning = true
     gep.lastUpdate = Date.now()
     broadcastGep()
@@ -315,8 +331,15 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle('aowa:open-aowa', () => shell.openExternal('https://aowa.ashguard.io/profile'))
   // Fetched in main (Node) so the renderer isn't blocked by CORS.
   ipcMain.handle('aowa:worldstate', async () => {
-    const [ws, cycles] = await Promise.all([fetchWorldState(), fetchCycles()])
-    return { ws, cycles }
+    // /events can 503 transiently (DE's CDN flaps); don't let it reject the
+    // handler — return whatever resolved so the dashboard degrades gracefully.
+    const [ws, cycles] = await Promise.allSettled([fetchWorldState(), fetchCycles()])
+    if (ws.status === 'rejected') console.warn('[AOWA] worldstate fetch failed:', ws.reason?.message ?? ws.reason)
+    if (cycles.status === 'rejected') console.warn('[AOWA] cycles fetch failed:', cycles.reason?.message ?? cycles.reason)
+    return {
+      ws: ws.status === 'fulfilled' ? ws.value : null,
+      cycles: cycles.status === 'fulfilled' ? cycles.value : null,
+    }
   })
   // Personal data via the stored agent token (backend #37). Returns paired:false
   // when unlinked; drops the token if the server rejects it.

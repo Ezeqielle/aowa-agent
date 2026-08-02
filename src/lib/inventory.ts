@@ -8,8 +8,26 @@
 // the real payload is captured with the GEP sample app.
 import type { IngestItem } from './api'
 
+// GEP delivers info-updates nested by feature/category, so the Warframe
+// `match_info.inventory` key arrives as `{ match_info: { inventory: <value> } }`,
+// not `{ inventory: <value> }`. Locate the `inventory` value wherever GEP puts
+// it: top level, under its `match_info` category, or nested any deeper. Returns
+// the first `inventory`-keyed value found (bounded depth; avoids cycles).
+export function findInventoryValue(info: unknown, depth = 4): unknown {
+  if (info == null || typeof info !== 'object' || depth < 0) return undefined
+  const obj = info as Record<string, unknown>
+  if ('inventory' in obj && obj['inventory'] != null) return obj['inventory']
+  for (const v of Object.values(obj)) {
+    if (v && typeof v === 'object') {
+      const found = findInventoryValue(v, depth - 1)
+      if (found !== undefined) return found
+    }
+  }
+  return undefined
+}
+
 export function normalizeInventory(info: Record<string, unknown>): IngestItem[] {
-  const raw = info['inventory']
+  const raw = findInventoryValue(info)
   if (raw == null) return []
 
   // GEP often stringifies feature values.

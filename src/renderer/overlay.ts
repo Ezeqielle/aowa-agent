@@ -17,7 +17,7 @@ async function refresh(): Promise<void> {
   try {
     const data = await window.aowa.worldState()
     ws = data.ws
-    cycles = data.cycles
+    cycles = data.cycles ?? []
     render()
   } catch {
     /* overlay stays quiet on transient errors */

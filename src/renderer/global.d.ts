@@ -41,7 +41,7 @@ export interface AowaBridge {
   pair(code: string): Promise<{ ok: boolean; error?: string }>
   unpair(): Promise<void>
   openAowa(): Promise<void>
-  worldState(): Promise<{ ws: WorldState; cycles: Cycle[] }>
+  worldState(): Promise<{ ws: WorldState | null; cycles: Cycle[] | null }>
   me(): Promise<MeData>
   onStatus(cb: (s: AgentStatus) => void): void
   onGep(cb: (s: GepState) => void): void

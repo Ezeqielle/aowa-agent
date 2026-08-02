@@ -194,10 +194,21 @@ Verify on any OS (no ow-electron needed): `npm run test` (deeplink + inventory)
 and `npx tsc -p tsconfig.web.json --noEmit` + `npx vite build` (renderer).
 
 ## Capture the real GEP inventory (on Windows, with Warframe)
-`main.ts` logs raw GEP updates (`DEBUG_GEP`) tagged **`[AOWA-GEP]`**. Run the app
-with Warframe, open your inventory, read the console, and tune
-`src/lib/inventory.ts` `normalizeInventory()` (the single place) + confirm the
-game id if needed.
+**Confirmed:** Overwolf GEP for Warframe (`8954`) *does* expose an `inventory`
+key — it's an info key under the **`match_info`** feature, published and live
+(`state:1`). Verify against the registry:
+`curl https://game-events-status.overwolf.com/8954_prod.json`. Two caveats: its
+`sample_data` is `null` (Overwolf documents no payload shape — we must capture
+it), and GEP delivers info-updates **nested by feature category**, so it arrives
+as `{ match_info: { inventory: … } }`, not top-level. `findInventoryValue()`
+(in `src/lib/inventory.ts`) now locates it at any nesting depth.
+
+`main.ts` logs **every** GEP info-update unconditionally: `[AOWA-GEP] info …`
+(the key shape) and, when present, `[AOWA-GEP] inventory raw: …` (the payload,
+truncated). Set `DEBUG_GEP` for full JSON. Run with Warframe, open your
+inventory in-game, read the console, then tune `normalizeInventory()` to the real
+shape. Note: **relics live only in the GEP `inventory` payload** — the EE.log
+(`[AOWA-EE]`) only carries the equipped loadout + mods, never the relic list.
 
 ## Pairing
 AOWA → Profile → **Link agent** opens `aowa://pair?code=…` → the app pairs

@@ -46,7 +46,7 @@ async function refresh(): Promise<void> {
   try {
     const data = await window.aowa.worldState()
     ws = data.ws
-    cycles = data.cycles
+    cycles = data.cycles ?? []
     $('err').textContent = ''
     render()
   } catch (e) {
