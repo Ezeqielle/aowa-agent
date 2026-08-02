@@ -274,6 +274,10 @@ function initGep(): void {
     // captured the real payload. Full JSON when DEBUG_GEP, else a compact key map.
     if (DEBUG_GEP) {
       console.log('[AOWA-GEP] new-info-update', gameId, JSON.stringify(info))
+    } else if (typeof info.key === 'string') {
+      // Flat shape — show the actual feature/key so you can see WHICH update
+      // fired (e.g. game_info/username vs the one we want, match_info/inventory).
+      console.log('[AOWA-GEP] info', gameId, `${String(info.feature ?? '?')}/${info.key}`)
     } else {
       const shape: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(info)) {
