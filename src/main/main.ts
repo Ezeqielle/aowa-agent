@@ -33,6 +33,8 @@ const owApp = app as unknown as {
         on(event: string, cb: (...args: any[]) => void): void
         removeAllListeners?(): void
         setRequiredFeatures(gameId: number, features: string[] | null): Promise<unknown>
+        getFeatures?(gameId: number): Promise<string[]>
+        getInfo?(gameId: number): Promise<any>
       }
       overlay?: any
     }
@@ -246,6 +248,29 @@ function eeLogPath(): string {
   return join(localAppData, 'Warframe', 'EE.log')
 }
 
+let infoPollTimer: ReturnType<typeof setInterval> | null = null
+
+// pullInventory reads GEP's CURRENT cached game state on demand (getInfo) rather
+// than waiting for the one-shot `match_info.inventory` event, which only fires at
+// the login inventory load — easily missed if the agent starts after login.
+// getInfo returns whatever GEP has cached, so it works even if we missed the event.
+async function pullInventory(gameId: number, api: NonNullable<typeof owApp.overwolf.packages.gep>): Promise<void> {
+  if (!api.getInfo) return
+  try {
+    const info = await api.getInfo(gameId)
+    const inv = findInventoryValue(info)
+    if (inv === undefined) return // not cached yet — a later poll may have it
+    const items = normalizeInventory({ inventory: inv } as Record<string, unknown>)
+    console.log('[AOWA-GEP] getInfo → inventory present,', items.length, 'items')
+    if (items.length) {
+      pending = items
+      scheduleFlush()
+    }
+  } catch (e) {
+    console.error('[AOWA-GEP] getInfo failed', e)
+  }
+}
+
 function initGep(): void {
   const api = owApp.overwolf.packages.gep
   if (!api) return
@@ -261,7 +286,16 @@ function initGep(): void {
       // ['match_info','game_info'] list did NOT (same login inventory sync fired
       // it under null but stayed silent under the list). Do not "narrow" this.
       void Promise.resolve(api.setRequiredFeatures(gameId, null))
-        .then((r) => console.log('[AOWA-GEP] setRequiredFeatures(null=all) →', JSON.stringify(r)))
+        .then(async (r) => {
+          console.log('[AOWA-GEP] setRequiredFeatures(null=all) →', JSON.stringify(r))
+          const feats = await api.getFeatures?.(gameId).catch(() => undefined)
+          if (feats) console.log('[AOWA-GEP] getFeatures →', JSON.stringify(feats))
+          // Pull the current inventory now, then a few more times as the game
+          // finishes loading it, then keep a slow poll so re-syncs are caught.
+          for (const ms of [1500, 6000, 20000]) setTimeout(() => void pullInventory(gameId, api), ms)
+          if (infoPollTimer) clearInterval(infoPollTimer)
+          infoPollTimer = setInterval(() => void pullInventory(gameId, api), 120_000)
+        })
         .catch((err) => console.error('[AOWA-GEP] setRequiredFeatures failed', err))
       gep.gameRunning = true
       broadcastGep()
@@ -302,6 +336,10 @@ function initGep(): void {
 
   api.on('game-exit', (_e: unknown, gameId: number, name?: string) => {
     console.log('[AOWA-GEP] game-exit', gameId, name)
+    if (infoPollTimer) {
+      clearInterval(infoPollTimer)
+      infoPollTimer = null
+    }
     gep.gameRunning = false
     broadcastGep()
   })
