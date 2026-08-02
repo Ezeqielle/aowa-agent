@@ -20,12 +20,15 @@ export const GEP_FEATURES = ['match_info', 'game_info'] as const
 // Coalesce bursts of inventory updates into one POST.
 export const INGEST_DEBOUNCE_MS = 4000
 
-// Log raw GEP payloads to help capture Warframe's real inventory shape.
-export const DEBUG_GEP = true
+// Log the FULL raw GEP inventory JSON on every update (huge). Off by default now
+// that the shape is captured — the handler still logs a compact `[AOWA-GEP] info`
+// shape + a truncated `inventory raw` line, which is enough to see it fire.
+export const DEBUG_GEP = false
 
-// Log every parsed EE.log line to help capture Warframe's real log wording
-// (so the rules in src/lib/eelog.ts can be tuned to the live format).
-export const DEBUG_EE = true
+// Dump every parsed EE.log line to the console (very noisy — floods GEP/INGEST
+// logs). Off by default; the EE parser still runs and feeds the activity card.
+// Turn on only when tuning the EE.log rules in src/lib/eelog.ts.
+export const DEBUG_EE = false
 
 // How often the EE.log tailer polls for appended lines.
 export const EE_POLL_MS = 2000
