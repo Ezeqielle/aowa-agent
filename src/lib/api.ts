@@ -6,6 +6,8 @@ import { API_BASE } from './config'
 export interface IngestItem {
   name: string
   count: number
+  /** Gear leveled to max at least once (Mastery Rank) — surfaced in AOWA (#39/#42). */
+  mastered?: boolean
 }
 
 export interface PairResponse {
@@ -17,6 +19,7 @@ export interface IngestResult {
   received: number
   relics: number
   gear: number
+  mastered: number
 }
 
 // pair exchanges a one-time pairing code (from the `aowa://pair?code=` deep link)

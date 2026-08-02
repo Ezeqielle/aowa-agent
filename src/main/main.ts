@@ -196,8 +196,12 @@ async function flush(): Promise<void> {
   pending = null
   const token = loadToken()
   if (!items?.length || !token) return
+  // Log exactly what we send so the real GEP item naming can be mapped (#42):
+  // if relics aren't matching in AOWA, these are the names to reconcile.
+  console.log('[AOWA-INGEST] sending', items.length, 'items:', JSON.stringify(items))
   try {
-    await ingestInventory(token, items)
+    const res = await ingestInventory(token, items)
+    console.log('[AOWA-INGEST] result:', JSON.stringify(res))
   } catch (e) {
     if (e instanceof UnauthorizedError) {
       clearToken()
