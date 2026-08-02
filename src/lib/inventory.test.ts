@@ -17,6 +17,26 @@ describe('normalizeInventory', () => {
     expect(findInventoryValue({ a: { b: { inventory: 'x' } } })).toBe('x')
     expect(findInventoryValue({ nope: 1 })).toBeUndefined()
   })
+  it('parses the real DE inventory: relics from MiscItems, summed by base relic', () => {
+    // Shape confirmed on-device: GEP flat event whose value is a stringified
+    // inventory.php. Relics are MiscItems keyed by DE ItemType path.
+    const inv = {
+      MiscItems: [
+        { ItemCount: 3, ItemType: '/Lotus/Types/Game/Projections/T1VoidProjectionAtlasPrimeABronze' }, // Lith S8
+        { ItemCount: 2, ItemType: '/Lotus/Types/Game/Projections/T1VoidProjectionAtlasPrimeASilver' }, // Lith S8 (refined) → sums
+        { ItemCount: 4, ItemType: '/Lotus/Types/Game/Projections/T1VoidProjectionAtlasPrimeBBronze' }, // Lith L2
+        { ItemCount: 1, ItemType: '/Lotus/Types/Items/ShipFeatureItems/VoidProjectionFeatureItem' }, // Void Relic Segment → not a relic
+        { ItemCount: 9999, ItemType: '/Lotus/Types/Items/MiscItems/Rubedo' }, // resource → skipped
+      ],
+      Suits: [{ ItemType: '/Lotus/Powersuits/Excalibur/Excalibur', XP: 1626966 }],
+    }
+    const event = { gameId: 8954, feature: 'match_info', category: 'match_info', key: 'inventory', value: JSON.stringify(inv) }
+    const got = normalizeInventory(event)
+    expect(got).toContainEqual({ name: 'Lith S8', count: 5 })
+    expect(got).toContainEqual({ name: 'Lith L2', count: 4 })
+    expect(got.find((i) => i.name.includes('Rubedo'))).toBeUndefined()
+    expect(got.length).toBe(2) // only the two real relics
+  })
   it('handles the real ow-electron flat shape {feature,key,value}', () => {
     // Confirmed on-device: GEP emits e.g.
     // {gameId,feature:"match_info",category:"match_info",key:"inventory",value:…}

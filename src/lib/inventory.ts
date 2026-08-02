@@ -1,23 +1,22 @@
 // Normalizes the Overwolf GEP `inventory` payload into the { name, count }[] that
 // AOWA's ingest endpoint expects.
 //
-// The precise GEP shape for Warframe is unconfirmed (see docs/README) — this
-// function is the single place that encodes the assumption. GEP typically
-// delivers `info` values as JSON strings, and inventory is commonly a keyed map
-// or an array of entries. We handle the likely shapes defensively; adjust once
-// the real payload is captured with the GEP sample app.
+// CONFIRMED on-device (2026-08): Warframe GEP (8954) emits `match_info.inventory`
+// once `match_info` is an explicitly-required feature. The value is a stringified
+// JSON of DE's real `inventory.php` — relics live in `MiscItems` as
+// `{ ItemCount, ItemType: "/Lotus/Types/Game/Projections/T<tier>VoidProjection…" }`,
+// keyed by DE internal path (not display name). We resolve those paths to base
+// relic names via the embedded WFCD map (`relics.ts`) and sum by relic, so the
+// backend's existing relic-count ingest (matched by name) works unchanged.
 import type { IngestItem } from './api'
+import { RELIC_NAMES } from './relics'
 
-// GEP delivers info-updates nested by feature/category, so the Warframe
-// `match_info.inventory` key arrives as `{ match_info: { inventory: <value> } }`,
-// not `{ inventory: <value> }`. Locate the `inventory` value wherever GEP puts
-// it: top level, under its `match_info` category, or nested any deeper. Returns
-// the first `inventory`-keyed value found (bounded depth; avoids cycles).
+// GEP delivers info-updates flat as { feature, category, key, value } (confirmed
+// on-device). Fall back to nested/top-level shapes for safety. Returns the value
+// of the `inventory` key wherever it appears.
 export function findInventoryValue(info: unknown, depth = 4): unknown {
   if (info == null || typeof info !== 'object' || depth < 0) return undefined
   const obj = info as Record<string, unknown>
-  // ow-electron delivers each info-update flat: { feature, category, key, value }.
-  // Confirmed on-device — so the inventory arrives as { key:'inventory', value }.
   if (typeof obj['key'] === 'string' && 'value' in obj) {
     return String(obj['key']).toLowerCase() === 'inventory' ? obj['value'] : undefined
   }
@@ -31,11 +30,36 @@ export function findInventoryValue(info: unknown, depth = 4): unknown {
   return undefined
 }
 
+// isDeInventory recognises DE's real inventory.php shape (vs. the legacy toy
+// shapes below) by its signature arrays.
+function isDeInventory(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object' && (Array.isArray((v as Record<string, unknown>).MiscItems) || Array.isArray((v as Record<string, unknown>).Suits))
+}
+
+// parseDeInventory extracts owned relics from the real payload: every MiscItem
+// whose ItemType resolves in RELIC_NAMES is a relic; counts are summed per base
+// relic across refinements. (Non-relic MiscItems — resources, the Void Relic
+// Segment ship feature, etc. — aren't in the map and are skipped.)
+function parseDeInventory(inv: Record<string, unknown>): IngestItem[] {
+  const counts = new Map<string, number>()
+  const misc = Array.isArray(inv.MiscItems) ? inv.MiscItems : []
+  for (const raw of misc) {
+    if (!raw || typeof raw !== 'object') continue
+    const mi = raw as Record<string, unknown>
+    const type = typeof mi.ItemType === 'string' ? mi.ItemType : ''
+    const name = RELIC_NAMES[type]
+    if (!name) continue
+    const c = Number(mi.ItemCount)
+    counts.set(name, (counts.get(name) ?? 0) + (Number.isFinite(c) && c > 0 ? c : 0))
+  }
+  return [...counts].map(([name, count]) => ({ name, count }))
+}
+
 export function normalizeInventory(info: Record<string, unknown>): IngestItem[] {
   const raw = findInventoryValue(info)
   if (raw == null) return []
 
-  // GEP often stringifies feature values.
+  // GEP stringifies the inventory value.
   let value: unknown = raw
   if (typeof raw === 'string') {
     try {
@@ -45,6 +69,10 @@ export function normalizeInventory(info: Record<string, unknown>): IngestItem[] 
     }
   }
 
+  // Real DE inventory → extract relics (owned gear/mastery is a later phase).
+  if (isDeInventory(value)) return parseDeInventory(value)
+
+  // ---- legacy/simple shapes (kept for forward-compat + unit tests) ----------
   const out: IngestItem[] = []
   const push = (name: unknown, count: unknown, mastered?: boolean) => {
     if (typeof name !== 'string' || !name.trim()) return
@@ -53,9 +81,6 @@ export function normalizeInventory(info: Record<string, unknown>): IngestItem[] 
     if (mastered) item.mastered = true
     out.push(item)
   }
-
-  // Best-effort mastery signal: an explicit `mastered` flag, or rank at max
-  // (xp/rank == its cap). Confirm the real field names once GEP is captured.
   const isMastered = (e: Record<string, unknown>): boolean => {
     if (typeof e.mastered === 'boolean') return e.mastered
     const rank = Number(e.rank ?? e.itemRank ?? NaN)
@@ -64,7 +89,6 @@ export function normalizeInventory(info: Record<string, unknown>): IngestItem[] 
   }
 
   if (Array.isArray(value)) {
-    // e.g. [{ name: "Axi A1 Relic", count: 3 }, { name: "Excalibur", rank: 30 }]
     for (const entry of value) {
       if (entry && typeof entry === 'object') {
         const e = entry as Record<string, unknown>
@@ -72,7 +96,6 @@ export function normalizeInventory(info: Record<string, unknown>): IngestItem[] 
       }
     }
   } else if (value && typeof value === 'object') {
-    // e.g. { "Axi A1 Relic": 3, "Excalibur": 1 } — no per-item mastery here.
     for (const [name, count] of Object.entries(value as Record<string, unknown>)) {
       push(name, count)
     }
