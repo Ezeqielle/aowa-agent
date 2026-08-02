@@ -28,14 +28,28 @@ describe('normalizeInventory', () => {
         { ItemCount: 1, ItemType: '/Lotus/Types/Items/ShipFeatureItems/VoidProjectionFeatureItem' }, // Void Relic Segment → not a relic
         { ItemCount: 9999, ItemType: '/Lotus/Types/Items/MiscItems/Rubedo' }, // resource → skipped
       ],
-      Suits: [{ ItemType: '/Lotus/Powersuits/Excalibur/Excalibur', XP: 1626966 }],
+      Suits: [
+        { ItemType: '/Lotus/Powersuits/Excalibur/Excalibur', XP: 1626966 }, // ≥900k → mastered
+        { ItemType: '/Lotus/Powersuits/Ninja/Ninja', XP: 0 }, // owned, never leveled → not mastered
+      ],
+      Melee: [{ ItemType: '/Lotus/Weapons/Tenno/Melee/PrimeFragor/PrimeFragor', XP: 6965294 }], // ≥450k → mastered
+      XPInfo: [{ ItemType: '/Lotus/Powersuits/Ninja/Ninja', XP: 950000 }], // ledger overrides current XP=0 → mastered
     }
     const event = { gameId: 8954, feature: 'match_info', category: 'match_info', key: 'inventory', value: JSON.stringify(inv) }
     const got = normalizeInventory(event)
+    // relics
     expect(got).toContainEqual({ name: 'Lith S8', count: 5 })
     expect(got).toContainEqual({ name: 'Lith L2', count: 4 })
     expect(got.find((i) => i.name.includes('Rubedo'))).toBeUndefined()
-    expect(got.length).toBe(2) // only the two real relics
+    // gear: owned + mastered (mastery from XPInfo ledger, not just current XP)
+    expect(got).toContainEqual({ name: 'Excalibur', count: 1, mastered: true })
+    expect(got).toContainEqual({ name: 'Fragor Prime', count: 1, mastered: true })
+    expect(got).toContainEqual({ name: 'Ash', count: 1, mastered: true }) // ledger 950k ≥ 900k
+  })
+  it('marks owned-but-unleveled gear as not mastered', () => {
+    const inv = { Suits: [{ ItemType: '/Lotus/Powersuits/Ninja/Ninja', XP: 0 }] }
+    const event = { feature: 'match_info', key: 'inventory', value: JSON.stringify(inv) }
+    expect(normalizeInventory(event)).toEqual([{ name: 'Ash', count: 1 }]) // owned, no mastered flag
   })
   it('handles the real ow-electron flat shape {feature,key,value}', () => {
     // Confirmed on-device: GEP emits e.g.
