@@ -33,6 +33,7 @@ export interface SyncState {
   quests: number
   starChart: number
   autoChecked: number
+  syndicates: number
   at: number
 }
 export interface Currencies {
