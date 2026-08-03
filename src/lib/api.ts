@@ -43,17 +43,27 @@ export interface IngestCurrencies {
   endo?: number
 }
 
+// A sellable prime part snapshot entry (#54): part name, owned count, ducat value.
+export interface IngestPart {
+  name: string
+  count: number
+  ducats: number
+}
+
 // ingestInventory pushes an inventory snapshot. The backend reconciles it:
 // relic names → owned relic counts, gear names → craftables marked owned. Any
-// currencies are stored per-user and surfaced on the web Account tab (#52).
+// currencies are stored per-user and surfaced on the web Account tab (#52);
+// prime parts power the sellables view (#54).
 export async function ingestInventory(
   token: string,
   items: IngestItem[],
   currencies?: IngestCurrencies | null,
+  parts?: IngestPart[] | null,
   at: string = new Date().toISOString(),
 ): Promise<IngestResult> {
   const body: Record<string, unknown> = { events: [{ type: 'inventory', items, at }] }
   if (currencies) body.currencies = currencies
+  if (parts && parts.length) body.parts = parts
   const res = await fetch(`${API_BASE}/me/agent/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

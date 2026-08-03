@@ -10,6 +10,7 @@
 // backend's existing relic-count ingest (matched by name) works unchanged.
 import type { IngestItem } from './api'
 import { GEAR_NAMES } from './gear'
+import { PART_INFO } from './parts'
 import { RELIC_NAMES } from './relics'
 
 // DE inventory arrays of masterable gear → the mastery cap for that class.
@@ -139,6 +140,50 @@ export function extractCurrencies(info: Record<string, unknown>): Currencies | n
     if (Number.isFinite(n)) out[key] = n
   }
   return Object.keys(out).length ? out : null
+}
+
+// A sellable prime part the player owns (#54): count owned + its Baro ducat value.
+export interface SellablePart {
+  name: string
+  count: number
+  ducats: number
+}
+
+// extractParts pulls owned prime parts from the DE inventory. Blueprints live in
+// the `Recipes` array, components in `MiscItems`; both key on ItemType, which
+// joins to PART_INFO (generated from WFCD). Counts are summed per part. Returns
+// [] for a non-DE / empty payload.
+export function extractParts(info: Record<string, unknown>): SellablePart[] {
+  const raw = findInventoryValue(info)
+  if (raw == null) return []
+  let value: unknown = raw
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw)
+    } catch {
+      return []
+    }
+  }
+  if (!isDeInventory(value)) return []
+  const inv = value as Record<string, unknown>
+
+  const counts = new Map<string, { count: number; ducats: number }>()
+  for (const arr of ['Recipes', 'MiscItems'] as const) {
+    const list = Array.isArray(inv[arr]) ? (inv[arr] as unknown[]) : []
+    for (const raw of list) {
+      if (!raw || typeof raw !== 'object') continue
+      const e = raw as Record<string, unknown>
+      const type = typeof e.ItemType === 'string' ? e.ItemType : ''
+      const info = PART_INFO[type]
+      if (!info) continue
+      const c = Number(e.ItemCount)
+      if (!Number.isFinite(c) || c <= 0) continue
+      const cur = counts.get(info.n) ?? { count: 0, ducats: info.d }
+      cur.count += c
+      counts.set(info.n, cur)
+    }
+  }
+  return Array.from(counts, ([name, v]) => ({ name, count: v.count, ducats: v.ducats }))
 }
 
 export function normalizeInventory(info: Record<string, unknown>): IngestItem[] {

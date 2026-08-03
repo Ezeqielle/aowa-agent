@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractCurrencies, findInventoryValue, normalizeInventory } from './inventory'
+import { extractCurrencies, extractParts, findInventoryValue, normalizeInventory } from './inventory'
 
 describe('normalizeInventory', () => {
   it('finds inventory nested under a GEP feature category (match_info.inventory)', () => {
@@ -99,5 +99,36 @@ describe('extractCurrencies', () => {
     expect(extractCurrencies({ inventory: [{ name: 'Braton', count: 1 }] })).toBeNull() // legacy shape, not DE
     expect(extractCurrencies({})).toBeNull()
     expect(extractCurrencies({ inventory: JSON.stringify({ Suits: [] }) })).toBeNull() // DE but no currencies
+  })
+})
+
+describe('extractParts', () => {
+  it('pulls prime parts (Recipes + MiscItems) with counts + ducats, summed', () => {
+    const inv = {
+      Suits: [],
+      // Blueprints live in Recipes; components in MiscItems. Real WFCD ItemTypes.
+      Recipes: [
+        { ItemType: '/Lotus/Types/Recipes/WarframeRecipes/SarynPrimeBlueprint', ItemCount: 2 },
+      ],
+      MiscItems: [
+        { ItemType: '/Lotus/Types/Recipes/WarframeRecipes/SarynPrimeChassisComponent', ItemCount: 3 },
+        { ItemType: '/Lotus/Types/Recipes/WarframeRecipes/SarynPrimeSystemsComponent', ItemCount: 1 },
+        { ItemType: '/Lotus/Types/Items/MiscItems/OrokinCell', ItemCount: 9999 }, // not a prime part → skipped
+        { ItemCount: 3, ItemType: '/Lotus/Types/Game/Projections/T1VoidProjectionAtlasPrimeABronze' }, // relic → skipped
+      ],
+    }
+    const got = extractParts({ inventory: JSON.stringify(inv) })
+    const bp = got.find((p) => p.name === 'Saryn Prime Blueprint')
+    const chassis = got.find((p) => p.name === 'Saryn Prime Chassis')
+    const systems = got.find((p) => p.name === 'Saryn Prime Systems')
+    expect(bp).toEqual({ name: 'Saryn Prime Blueprint', count: 2, ducats: 65 })
+    expect(chassis).toEqual({ name: 'Saryn Prime Chassis', count: 3, ducats: 100 })
+    expect(systems).toEqual({ name: 'Saryn Prime Systems', count: 1, ducats: 15 })
+    expect(got.find((p) => /Orokin Cell/.test(p.name))).toBeUndefined()
+    expect(got.length).toBe(3)
+  })
+  it('returns [] for non-DE / empty payloads', () => {
+    expect(extractParts({})).toEqual([])
+    expect(extractParts({ inventory: [{ name: 'x', count: 1 }] })).toEqual([])
   })
 })
