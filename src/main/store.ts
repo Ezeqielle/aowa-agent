@@ -19,6 +19,7 @@ export interface OverlayConfig {
   sections: Record<OverlaySection, boolean>
   topbar: boolean // is the always-on top bar shown (#60)
   hud: boolean // does the in-game HUD auto-show when Warframe injects
+  background: boolean // draw the dark strip behind the top bar, or just the chips (#65)
 }
 const DEFAULT_OVERLAY: OverlayConfig = {
   sections: { cycles: true, baro: true, fissures: true, sortie: false, archon: false },
@@ -26,6 +27,7 @@ const DEFAULT_OVERLAY: OverlayConfig = {
   // The big in-game HUD panel is OFF by default now — the slim top bar (#60) is
   // the primary overlay. Enable the HUD from the dashboard if you want it.
   hud: false,
+  background: true,
 }
 
 interface State {
@@ -67,7 +69,7 @@ export const loadOverlayConfig = (): OverlayConfig => {
   // hud defaults OFF: only enabled when explicitly turned on (so existing users
   // stop seeing the old in-game HUD panel unless they opt back in).
   return o
-    ? { sections: { ...DEFAULT_OVERLAY.sections, ...o.sections }, topbar: !!o.topbar, hud: o.hud === true }
+    ? { sections: { ...DEFAULT_OVERLAY.sections, ...o.sections }, topbar: !!o.topbar, hud: o.hud === true, background: o.background !== false }
     : { ...DEFAULT_OVERLAY, sections: { ...DEFAULT_OVERLAY.sections } }
 }
 export const saveOverlayConfig = (o: OverlayConfig): void => write({ ...read(), overlay: o })

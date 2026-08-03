@@ -10,6 +10,8 @@ body.topbar-body { background:transparent; overflow:hidden; margin:0; }
 .tb { display:flex; align-items:center; gap:.5rem; height:34px; padding:0 .7rem; font-size:.76rem; white-space:nowrap; overflow:hidden;
   background:linear-gradient(180deg, rgba(20,17,31,.92), rgba(10,8,20,.92)); border-bottom:1px solid var(--border);
   -webkit-app-region: no-drag; color:var(--fg); }
+/* #65: no dark strip — just the chips floating over the game (chips keep pills). */
+.tb.no-bg { background:transparent; border-bottom:none; }
 .tb-group { display:flex; align-items:center; gap:.4rem; }
 .tb-sep { width:1px; height:16px; background:var(--border); margin:0 .2rem; }
 .tb-chip { display:inline-flex; align-items:center; gap:.25rem; background:var(--panel2); border:1px solid var(--border);

@@ -19,7 +19,7 @@ import { extractPairCode } from '../lib/deeplink'
 import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
 import { clearToken, loadHotkey, loadOverlayConfig, loadToken, saveHotkey, saveOverlayConfig, saveToken, type OverlayConfig } from './store'
 import { DEFAULT_HOTKEY, hotkeyLabel, toAccelerator, type HotkeyBinding } from './hotkey'
-import { initOverlay, setOverlayVisible, setOverlayHotkey } from './overlay'
+import { initOverlay, setOverlayVisible, setOverlayHotkey, sendToOverlay } from './overlay'
 import { startEELogTail } from './eelog'
 import type { EELogEvent } from '../lib/eelog'
 
@@ -133,6 +133,7 @@ function toggleTopbar(): void {
   saveOverlayConfig(cfg)
   setOverlayVisible(cfg.topbar, topbarBounds())
   for (const w of [dashboard]) w?.webContents.send('aowa:overlay:config', cfg)
+  sendToOverlay('aowa:overlay:config', cfg)
 }
 
 // Desktop global shortcut → toggle the top bar (in-game exclusive fullscreen uses
@@ -517,6 +518,7 @@ if (!app.requestSingleInstanceLock()) {
   // Overlay config (#60/#61): which sections show + whether the top bar is on.
   const broadcastOverlayConfig = (cfg: OverlayConfig) => {
     for (const w of [dashboard]) w?.webContents.send('aowa:overlay:config', cfg)
+    sendToOverlay('aowa:overlay:config', cfg) // push to the live in-game top bar too (#61/#65)
   }
   ipcMain.handle('aowa:overlay:config', () => loadOverlayConfig())
   ipcMain.handle('aowa:overlay:config:set', (_e, cfg: OverlayConfig) => {

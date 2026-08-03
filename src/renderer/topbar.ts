@@ -10,7 +10,7 @@ const $ = (id: string) => document.getElementById(id) as HTMLElement
 let ws: WorldState | null = null
 let cycles: Cycle[] = []
 let subs: Subscription[] = []
-let cfg: OverlayConfig = { sections: { cycles: true, baro: true, fissures: true, sortie: false, archon: false }, topbar: true, hud: false }
+let cfg: OverlayConfig = { sections: { cycles: true, baro: true, fissures: true, sortie: false, archon: false }, topbar: true, hud: false, background: true }
 
 const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] as string)
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
@@ -34,6 +34,8 @@ function subscribedFissures(): Fissure[] {
 
 function render(): void {
   const on = cfg.sections
+  // #65: toggle the dark strip behind the bar; the chips keep their own pills.
+  $('tb').classList.toggle('no-bg', cfg.background === false)
   const parts: string[] = []
 
   if (on.cycles && cycles.length) {

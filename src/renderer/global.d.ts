@@ -58,6 +58,7 @@ export interface OverlayConfig {
   sections: Record<OverlaySection, boolean>
   topbar: boolean
   hud: boolean
+  background: boolean
 }
 export interface Subscription {
   eventKind: string

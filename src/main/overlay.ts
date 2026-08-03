@@ -26,6 +26,9 @@ interface OWindow {
     on?(event: string, cb: () => void): void
     loadURL?(url: string): Promise<unknown>
     loadFile?(path: string): Promise<unknown>
+    // ow-electron's overlay window wraps a real Electron BrowserWindow, so its
+    // webContents lets main push IPC (e.g. live overlay-config updates) to it.
+    webContents?: { send(channel: string, ...args: unknown[]): void }
   }
 }
 
@@ -95,6 +98,17 @@ export function setOverlayVisible(show: boolean, bounds?: Bounds): void {
   if (bounds) w.window.setBounds?.(bounds)
   if (show) (w.window.restore ?? w.window.show)?.call(w.window)
   else w.window.hide?.()
+}
+
+// Push an IPC message to the live top-bar overlay window, so config changes
+// (section toggles, the #65 background toggle) update it without a reload. No-op
+// if the overlay window doesn't exist yet (it re-reads config on next create).
+export function sendToOverlay(channel: string, ...args: unknown[]): void {
+  try {
+    findWindow()?.window.webContents?.send(channel, ...args)
+  } catch (e) {
+    console.error('[AOWA-OV] sendToOverlay failed', e)
+  }
 }
 
 export function toggleOverlayWindow(): void {
