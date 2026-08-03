@@ -60,6 +60,15 @@ function loadInto(win: BrowserWindow, name: string): void {
   else void win.loadFile(target)
 }
 
+// AOWA app icon (#51). Windows prefers the multi-res .ico for crisp taskbar
+// scaling; PNG elsewhere. Passed to the dashboard window so the taskbar shows
+// the AOWA mark instead of the default Electron icon; paired with
+// setAppUserModelId below, which is what actually makes Windows adopt it.
+const APP_ICON = join(
+  __dirname,
+  process.platform === 'win32' ? '../../public/icons/icon.ico' : '../../public/icons/icon256.png',
+)
+
 function createDashboard(): void {
   if (dashboard) {
     dashboard.show()
@@ -69,6 +78,7 @@ function createDashboard(): void {
     width: 960,
     height: 640,
     title: 'AOWA',
+    icon: APP_ICON,
     backgroundColor: '#0f1117',
     webPreferences: { preload: join(__dirname, 'preload.js'), contextIsolation: true },
   })
@@ -364,6 +374,12 @@ function initGep(): void {
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
+  // Windows groups taskbar buttons and picks the taskbar/notification icon by
+  // AppUserModelID; without this it falls back to the generic Electron icon
+  // even though the window/exe carry the AOWA icon (#51). Must match the NSIS
+  // appId so the running app and the installed shortcut share one taskbar slot.
+  if (process.platform === 'win32') app.setAppUserModelId('io.ashguard.aowa-agent')
+
   app.on('second-instance', (_e, argv) => {
     handleDeepLink(argv)
     createDashboard()
