@@ -237,6 +237,7 @@ function renderCurrencies(): void {
     ['Credits', c?.credits, 'cr'],
     ['Ducats', c?.ducats, 'ducats'],
     ['Endo', c?.endo, 'endo'],
+    ['Heartcell', c?.heartcell, 'heartcell'],
   ]
   const curRows = curCells
     .filter(([, v]) => typeof v === 'number')

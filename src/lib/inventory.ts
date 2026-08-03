@@ -111,6 +111,7 @@ export type Currencies = {
   platinum?: number // PremiumCredits
   ducats?: number // PrimeTokens
   endo?: number // FusionPoints
+  heartcell?: number // Live Heartcell — Coda weapon currency (#64)
 }
 const CURRENCY_KEYS: Array<[keyof Currencies, string]> = [
   ['credits', 'RegularCredits'],
@@ -118,6 +119,10 @@ const CURRENCY_KEYS: Array<[keyof Currencies, string]> = [
   ['ducats', 'PrimeTokens'],
   ['endo', 'FusionPoints'],
 ]
+
+// Live Heartcell is not a top-level integer like the others — DE stores it in the
+// inventory MiscItems array keyed by ItemType (#64). Sum its ItemCount.
+const HEARTCELL_TYPE = '/Lotus/Types/Items/MiscItems/CodaWeaponBucks'
 
 // extractCurrencies pulls the account balances from the same GEP inventory info
 // wrapper normalizeInventory takes. Returns null when the payload isn't the real
@@ -140,6 +145,21 @@ export function extractCurrencies(info: Record<string, unknown>): Currencies | n
     const n = Number(inv[deKey])
     if (Number.isFinite(n)) out[key] = n
   }
+  // Heartcell lives in MiscItems (ItemType-keyed), so sum it separately.
+  const misc = Array.isArray(inv.MiscItems) ? inv.MiscItems : []
+  let heartcell = 0
+  let sawHeartcell = false
+  for (const raw of misc) {
+    if (!raw || typeof raw !== 'object') continue
+    const mi = raw as Record<string, unknown>
+    if (mi.ItemType !== HEARTCELL_TYPE) continue
+    const c = Number(mi.ItemCount)
+    if (Number.isFinite(c)) {
+      heartcell += c
+      sawHeartcell = true
+    }
+  }
+  if (sawHeartcell) out.heartcell = heartcell
   return Object.keys(out).length ? out : null
 }
 

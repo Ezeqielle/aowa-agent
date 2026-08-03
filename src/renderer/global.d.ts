@@ -41,6 +41,7 @@ export interface Currencies {
   platinum?: number
   ducats?: number
   endo?: number
+  heartcell?: number
 }
 import type { Cycle, WorldState } from '../lib/aowa-data'
 import type { Build, Todo } from '../lib/api'

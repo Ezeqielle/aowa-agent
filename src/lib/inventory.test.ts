@@ -95,6 +95,17 @@ describe('extractCurrencies', () => {
     const inv = { MiscItems: [], RegularCredits: 1000 }
     expect(extractCurrencies({ inventory: inv })).toEqual({ credits: 1000 })
   })
+  it('sums Live Heartcell from MiscItems (#64)', () => {
+    const inv = {
+      Suits: [],
+      PremiumCredits: 100,
+      MiscItems: [
+        { ItemType: '/Lotus/Types/Items/MiscItems/OrokinCell', ItemCount: 5 }, // unrelated
+        { ItemType: '/Lotus/Types/Items/MiscItems/CodaWeaponBucks', ItemCount: 12 },
+      ],
+    }
+    expect(extractCurrencies({ inventory: JSON.stringify(inv) })).toEqual({ platinum: 100, heartcell: 12 })
+  })
   it('returns null for non-DE / empty payloads', () => {
     expect(extractCurrencies({ inventory: [{ name: 'Braton', count: 1 }] })).toBeNull() // legacy shape, not DE
     expect(extractCurrencies({})).toBeNull()

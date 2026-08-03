@@ -42,6 +42,7 @@ export interface IngestCurrencies {
   credits?: number
   ducats?: number
   endo?: number
+  heartcell?: number
 }
 
 // A sellable prime part snapshot entry (#54): part name, owned count, ducat value.

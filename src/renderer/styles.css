@@ -81,6 +81,7 @@ button.primary:hover { filter:brightness(1.08); }
 .cur-plat b { color:#5ac8fa; }
 .cur-ducats b { color:#e8b84b; }
 .cur-endo b { color:#c98bff; }
+.cur-heartcell b { color:#ff5a6a; }
 .cycles { display:flex; flex-wrap:wrap; gap:.5rem; }
 .cycle { font-size:.78rem; background:var(--panel2); border:1px solid var(--border); border-radius:999px; padding:.15rem .55rem; }
 .err { color:#ef4444; font-size:.8rem; }
