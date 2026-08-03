@@ -1,5 +1,5 @@
 import type { Cycle, WorldState } from '../lib/aowa-data'
-import type { Activity, GepState, SyncState } from './global'
+import type { Activity, Currencies, GepState, SyncState } from './global'
 import { archonHtml, baroHtml, cyclesHtml, fissuresHtml, sortieHtml } from './panels'
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement
@@ -186,6 +186,43 @@ async function initSync(): Promise<void> {
   })
 }
 
+// Account balances (#52): plat / credits / ducats / endo read off the same GEP
+// inventory payload as the mastery sync. Large numbers get thousands separators.
+let currencies: Currencies | null = null
+const fmt = (n: number) => n.toLocaleString('en-US')
+function renderCurrencies(): void {
+  if (!currencies) {
+    $('currencies').innerHTML = '<p class="muted">Balances appear once Warframe syncs your inventory.</p>'
+    return
+  }
+  const c = currencies
+  const cells: Array<[string, number | undefined, string]> = [
+    ['Platinum', c.platinum, 'plat'],
+    ['Credits', c.credits, 'cr'],
+    ['Ducats', c.ducats, 'ducats'],
+    ['Endo', c.endo, 'endo'],
+  ]
+  const rows = cells
+    .filter(([, v]) => typeof v === 'number')
+    .map(
+      ([label, v, cls]) =>
+        `<span class="stat cur cur-${cls}"><b>${fmt(v as number)}</b>${label}</span>`,
+    )
+    .join('')
+  $('currencies').innerHTML = rows
+    ? `<div class="sync-stats currencies">${rows}</div>`
+    : '<p class="muted">No balances in the last sync.</p>'
+}
+
+async function initCurrencies(): Promise<void> {
+  currencies = await window.aowa.currencies()
+  renderCurrencies()
+  window.aowa.onCurrencies((c) => {
+    currencies = c
+    renderCurrencies()
+  })
+}
+
 async function initGepIndicator(): Promise<void> {
   const onGep = (s: GepState) => {
     const wasFresh = gep.lastUpdate
@@ -220,6 +257,7 @@ void initHotkey()
 void initActivity()
 void initGepIndicator()
 void initSync()
+void initCurrencies()
 
 // Re-render the "last sync ... ago" relative time periodically.
 setInterval(renderSync, 30_000)

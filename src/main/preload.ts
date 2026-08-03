@@ -32,11 +32,18 @@ export interface SyncState {
   received: number
   at: number
 }
+export interface Currencies {
+  credits?: number
+  platinum?: number
+  ducats?: number
+  endo?: number
+}
 
 contextBridge.exposeInMainWorld('aowa', {
   status: (): Promise<AgentStatus> => ipcRenderer.invoke('aowa:status'),
   gep: (): Promise<GepState> => ipcRenderer.invoke('aowa:gep'),
   sync: (): Promise<SyncState | null> => ipcRenderer.invoke('aowa:sync'),
+  currencies: (): Promise<Currencies | null> => ipcRenderer.invoke('aowa:currencies'),
   activity: (): Promise<Activity[]> => ipcRenderer.invoke('aowa:activity'),
   getHotkey: (): Promise<HotkeyInfo> => ipcRenderer.invoke('aowa:hotkey'),
   setHotkey: (h: HotkeyBinding): Promise<HotkeyInfo> => ipcRenderer.invoke('aowa:hotkey:set', h),
@@ -53,6 +60,9 @@ contextBridge.exposeInMainWorld('aowa', {
   },
   onSync: (cb: (s: SyncState | null) => void) => {
     ipcRenderer.on('aowa:sync', (_e, s: SyncState | null) => cb(s))
+  },
+  onCurrencies: (cb: (c: Currencies | null) => void) => {
+    ipcRenderer.on('aowa:currencies', (_e, c: Currencies | null) => cb(c))
   },
   onActivity: (cb: (a: Activity[]) => void) => {
     ipcRenderer.on('aowa:activity', (_e, a: Activity[]) => cb(a))

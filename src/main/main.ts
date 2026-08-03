@@ -13,7 +13,7 @@ import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut } from '
 import { join } from 'node:path'
 import { DEBUG_GEP, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
 import { fetchOwnedRelics, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
-import { findInventoryValue, normalizeInventory } from '../lib/inventory'
+import { extractCurrencies, findInventoryValue, normalizeInventory, type Currencies } from '../lib/inventory'
 import { extractPairCode } from '../lib/deeplink'
 import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
 import { clearToken, loadHotkey, loadToken, saveHotkey, saveToken } from './store'
@@ -248,6 +248,14 @@ function broadcastSync(): void {
   for (const w of [dashboard, overlay]) w?.webContents.send('aowa:sync', lastSync)
 }
 
+// ---- account currencies (surfaced to the dashboard, #52) -----------------
+// Plat/credits/ducats/endo read off the same GEP inventory payload as the
+// mastery sync. null until the first inventory pull carries them.
+let lastCurrencies: Currencies | null = null
+function broadcastCurrencies(): void {
+  for (const w of [dashboard, overlay]) w?.webContents.send('aowa:currencies', lastCurrencies)
+}
+
 // ---- EE.log activity (surfaced to the UI) --------------------------------
 type Activity = { kind: string; label: string; detail?: string; at: number }
 const activity: Activity[] = [] // newest first, capped
@@ -281,8 +289,15 @@ async function pullInventory(gameId: number, api: NonNullable<typeof owApp.overw
     const info = await api.getInfo(gameId)
     const inv = findInventoryValue(info)
     if (inv === undefined) return // not cached yet — a later poll may have it
-    const items = normalizeInventory({ inventory: inv } as Record<string, unknown>)
+    const wrapped = { inventory: inv } as Record<string, unknown>
+    const items = normalizeInventory(wrapped)
     console.log('[AOWA-GEP] getInfo → inventory present,', items.length, 'items')
+    const cur = extractCurrencies(wrapped)
+    if (cur) {
+      lastCurrencies = cur
+      broadcastCurrencies()
+      console.log('[AOWA-GEP] currencies', JSON.stringify(cur))
+    }
     if (items.length) {
       pending = items
       scheduleFlush()
@@ -397,6 +412,7 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle('aowa:status', () => status())
   ipcMain.handle('aowa:gep', () => gepState())
   ipcMain.handle('aowa:sync', () => lastSync)
+  ipcMain.handle('aowa:currencies', () => lastCurrencies)
   ipcMain.handle('aowa:activity', () => activity)
   ipcMain.handle('aowa:hotkey', () => ({ hotkey, label: hotkeyLabel(hotkey) }))
   ipcMain.handle('aowa:hotkey:set', (_e, h: HotkeyBinding) => {

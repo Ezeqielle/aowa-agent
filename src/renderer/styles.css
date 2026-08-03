@@ -30,6 +30,13 @@ button.primary { background: var(--accent); border-color: var(--accent); }
 .sync-stats { display:flex; gap:1.1rem; flex-wrap:wrap; margin:.2rem 0 .1rem; }
 .sync-stats .stat { font-size:.8rem; color:var(--muted); }
 .sync-stats .stat b { font-size:1.15rem; color:var(--text); font-weight:700; margin-right:.15rem; }
+.sync-stats.currencies { gap:.6rem; }
+.sync-stats .cur { display:flex; flex-direction:column; align-items:flex-start; gap:.05rem;
+  background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:.4rem .7rem; min-width:5rem; }
+.sync-stats .cur b { display:block; margin:0; font-variant-numeric: tabular-nums; }
+.cur-plat b { color:#5ac8fa; }
+.cur-ducats b { color:#e8b84b; }
+.cur-endo b { color:#c98bff; }
 .cycles { display:flex; flex-wrap:wrap; gap:.5rem; }
 .cycle { font-size:.78rem; background:var(--panel2); border:1px solid var(--border); border-radius:999px; padding:.15rem .55rem; }
 .err { color:#ef4444; font-size:.8rem; }

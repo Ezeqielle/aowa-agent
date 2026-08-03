@@ -101,6 +101,46 @@ function parseDeInventory(inv: Record<string, unknown>): IngestItem[] {
   return out
 }
 
+// Account currencies surfaced in the dashboard (#52). Read straight off the DE
+// inventory payload the mastery sync already consumes — DE stores them as flat
+// top-level integers. Fields absent from the payload are simply omitted.
+export type Currencies = {
+  credits?: number // RegularCredits
+  platinum?: number // PremiumCredits
+  ducats?: number // PrimeTokens
+  endo?: number // FusionPoints
+}
+const CURRENCY_KEYS: Array<[keyof Currencies, string]> = [
+  ['credits', 'RegularCredits'],
+  ['platinum', 'PremiumCredits'],
+  ['ducats', 'PrimeTokens'],
+  ['endo', 'FusionPoints'],
+]
+
+// extractCurrencies pulls the account balances from the same GEP inventory info
+// wrapper normalizeInventory takes. Returns null when the payload isn't the real
+// DE inventory or carries no recognised currency field.
+export function extractCurrencies(info: Record<string, unknown>): Currencies | null {
+  const raw = findInventoryValue(info)
+  if (raw == null) return null
+  let value: unknown = raw
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw)
+    } catch {
+      return null
+    }
+  }
+  if (!isDeInventory(value)) return null
+  const inv = value as Record<string, unknown>
+  const out: Currencies = {}
+  for (const [key, deKey] of CURRENCY_KEYS) {
+    const n = Number(inv[deKey])
+    if (Number.isFinite(n)) out[key] = n
+  }
+  return Object.keys(out).length ? out : null
+}
+
 export function normalizeInventory(info: Record<string, unknown>): IngestItem[] {
   const raw = findInventoryValue(info)
   if (raw == null) return []

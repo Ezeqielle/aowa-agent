@@ -30,6 +30,12 @@ export interface SyncState {
   received: number
   at: number
 }
+export interface Currencies {
+  credits?: number
+  platinum?: number
+  ducats?: number
+  endo?: number
+}
 import type { Cycle, WorldState } from '../lib/aowa-data'
 import type { Todo } from '../lib/api'
 
@@ -43,6 +49,7 @@ export interface AowaBridge {
   status(): Promise<AgentStatus>
   gep(): Promise<GepState>
   sync(): Promise<SyncState | null>
+  currencies(): Promise<Currencies | null>
   activity(): Promise<Activity[]>
   getHotkey(): Promise<HotkeyInfo>
   setHotkey(h: HotkeyBinding): Promise<HotkeyInfo>
@@ -54,6 +61,7 @@ export interface AowaBridge {
   onStatus(cb: (s: AgentStatus) => void): void
   onGep(cb: (s: GepState) => void): void
   onSync(cb: (s: SyncState | null) => void): void
+  onCurrencies(cb: (c: Currencies | null) => void): void
   onActivity(cb: (a: Activity[]) => void): void
 }
 declare global {

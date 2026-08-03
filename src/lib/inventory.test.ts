@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findInventoryValue, normalizeInventory } from './inventory'
+import { extractCurrencies, findInventoryValue, normalizeInventory } from './inventory'
 
 describe('normalizeInventory', () => {
   it('finds inventory nested under a GEP feature category (match_info.inventory)', () => {
@@ -82,5 +82,22 @@ describe('normalizeInventory', () => {
     expect(normalizeInventory({ inventory: [{ name: '' }, { count: 5 }] })).toEqual([])
     expect(normalizeInventory({})).toEqual([])
     expect(normalizeInventory({ inventory: 'not json' })).toEqual([])
+  })
+})
+
+describe('extractCurrencies', () => {
+  it('reads plat/credits/ducats/endo off the DE inventory (stringified GEP value)', () => {
+    const inv = { Suits: [], RegularCredits: 1234567, PremiumCredits: 480, PrimeTokens: 92, FusionPoints: 55000 }
+    const event = { feature: 'match_info', key: 'inventory', value: JSON.stringify(inv) }
+    expect(extractCurrencies(event)).toEqual({ credits: 1234567, platinum: 480, ducats: 92, endo: 55000 })
+  })
+  it('omits currency fields absent from the payload', () => {
+    const inv = { MiscItems: [], RegularCredits: 1000 }
+    expect(extractCurrencies({ inventory: inv })).toEqual({ credits: 1000 })
+  })
+  it('returns null for non-DE / empty payloads', () => {
+    expect(extractCurrencies({ inventory: [{ name: 'Braton', count: 1 }] })).toBeNull() // legacy shape, not DE
+    expect(extractCurrencies({})).toBeNull()
+    expect(extractCurrencies({ inventory: JSON.stringify({ Suits: [] }) })).toBeNull() // DE but no currencies
   })
 })
