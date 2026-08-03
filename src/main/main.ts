@@ -209,7 +209,7 @@ async function flush(): Promise<void> {
   // if relics aren't matching in AOWA, these are the names to reconcile.
   console.log('[AOWA-INGEST] sending', items.length, 'items:', JSON.stringify(items))
   try {
-    const res = await ingestInventory(token, items)
+    const res = await ingestInventory(token, items, lastCurrencies)
     console.log('[AOWA-INGEST] result:', JSON.stringify(res))
     lastSync = { relics: res.relics, gear: res.gear, mastered: res.mastered, received: res.received, at: Date.now() }
     broadcastSync()

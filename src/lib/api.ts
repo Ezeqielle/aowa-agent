@@ -34,17 +34,30 @@ export async function pair(code: string, label = 'Overwolf agent'): Promise<Pair
   return (await res.json()) as PairResponse
 }
 
+// Account balances pushed alongside the inventory snapshot (#52). Mirrors the
+// Currencies shape in inventory.ts; forwarded so the web profile can show them.
+export interface IngestCurrencies {
+  platinum?: number
+  credits?: number
+  ducats?: number
+  endo?: number
+}
+
 // ingestInventory pushes an inventory snapshot. The backend reconciles it:
-// relic names → owned relic counts, gear names → craftables marked owned.
+// relic names → owned relic counts, gear names → craftables marked owned. Any
+// currencies are stored per-user and surfaced on the web Account tab (#52).
 export async function ingestInventory(
   token: string,
   items: IngestItem[],
+  currencies?: IngestCurrencies | null,
   at: string = new Date().toISOString(),
 ): Promise<IngestResult> {
+  const body: Record<string, unknown> = { events: [{ type: 'inventory', items, at }] }
+  if (currencies) body.currencies = currencies
   const res = await fetch(`${API_BASE}/me/agent/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ events: [{ type: 'inventory', items, at }] }),
+    body: JSON.stringify(body),
   })
   if (res.status === 401) throw new UnauthorizedError()
   if (!res.ok) throw new Error(`ingest failed: ${res.status} ${await res.text()}`)
