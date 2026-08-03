@@ -60,6 +60,11 @@ export interface AowaBridge {
   me(): Promise<MeData>
   onStatus(cb: (s: AgentStatus) => void): void
   onGep(cb: (s: GepState) => void): void
+  winMinimize(): Promise<void>
+  winMaximize(): Promise<boolean>
+  winClose(): Promise<void>
+  winIsMaximized(): Promise<boolean>
+  onWinMaximized(cb: (max: boolean) => void): void
   onSync(cb: (s: SyncState | null) => void): void
   onCurrencies(cb: (c: Currencies | null) => void): void
   onActivity(cb: (a: Activity[]) => void): void

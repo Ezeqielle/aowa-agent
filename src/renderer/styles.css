@@ -1,11 +1,30 @@
-:root { color-scheme: dark; --bg:#0f1117; --panel:#151824; --panel2:#1c2130; --border:#262b36; --fg:#e5e7eb; --muted:#9ca3af; --accent:#7c3aed; --green:#22c55e; --amber:#f59e0b; }
+/* Palette aligned to the AOWA web app (#53): dark-violet base, cyan energy accent. */
+:root { color-scheme: dark; --bg:#0a0814; --bg2:#0d0a18; --panel:#14111f; --panel2:#1b1730; --border:#2a2340; --fg:#e9e6ff; --muted:#8a83a8; --accent:#00e5ff; --accent2:#ff2e88; --green:#00ff9d; --amber:#ffb800; --tbh:38px; }
 * { box-sizing: border-box; }
-body { margin:0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+body { margin:0; font-family: system-ui, sans-serif; color: var(--fg); }
+/* Dashboard-only shell layout — kept off the transparent overlay (body.overlay). */
+body:not(.overlay) { background: radial-gradient(1200px 600px at 50% -10%, #17122a 0%, var(--bg) 60%); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+/* Bespoke frameless titlebar (#53) */
+.titlebar { height:var(--tbh); flex:0 0 var(--tbh); display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(180deg, var(--panel2), var(--panel)); border-bottom:1px solid var(--border);
+  -webkit-app-region: drag; user-select:none; padding-left:.6rem; }
+.titlebar-brand { display:flex; align-items:center; gap:.5rem; min-width:0; }
+.titlebar-logo { width:20px; height:20px; flex:0 0 auto; }
+.titlebar-title { font-weight:800; letter-spacing:.14em; font-size:.82rem; }
+.titlebar-sub { font-size:.72rem; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.titlebar-controls { display:flex; align-items:stretch; height:100%; -webkit-app-region: no-drag; }
+.win-btn { display:inline-flex; align-items:center; justify-content:center; width:44px; height:100%;
+  background:none; border:none; border-radius:0; padding:0; color:var(--muted); cursor:pointer; }
+.win-btn:hover { background:rgba(255,255,255,.08); color:var(--fg); }
+.win-close:hover { background:#e0245e; color:#fff; }
+.win-btn.is-max svg rect { stroke-dasharray:0; }
 h1 { font-size: 1.1rem; margin: 0; }
 .muted { color: var(--muted); }
-.wrap { padding: 1.2rem; max-width: 920px; margin: 0 auto; }
+.wrap { padding: 1.2rem; max-width: 920px; margin: 0 auto; width:100%; flex:1 1 auto; overflow-y:auto; }
 .topbar { display:flex; align-items:center; gap:1rem; margin-bottom: 1rem; }
 .topbar h1 { margin-right:auto; }
+.topbar-heading { font-size:.78rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:700; }
 .status { display:flex; align-items:center; gap:.5rem; font-size:.85rem; }
 .dot { width:.7rem; height:.7rem; border-radius:50%; background:var(--muted); }
 .dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
@@ -13,7 +32,8 @@ h1 { font-size: 1.1rem; margin: 0; }
 .pair { display:flex; gap:.5rem; align-items:center; }
 .pair input { padding:.45rem .6rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--fg); font-family: ui-monospace, monospace; }
 button { padding:.5rem .8rem; border:1px solid var(--border); border-radius:8px; background:var(--panel2); color:var(--fg); cursor:pointer; font-size:.85rem; }
-button.primary { background: var(--accent); border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color:#04121a; font-weight:700; }
+button.primary:hover { filter:brightness(1.08); }
 .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: .9rem; }
 .card { background: var(--panel); border:1px solid var(--border); border-radius:12px; padding:.9rem 1rem; }
 .card h2 { font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 .6rem; }

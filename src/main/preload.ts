@@ -58,6 +58,14 @@ contextBridge.exposeInMainWorld('aowa', {
   onGep: (cb: (s: GepState) => void) => {
     ipcRenderer.on('aowa:gep', (_e, s: GepState) => cb(s))
   },
+  // Custom-titlebar window controls (#53).
+  winMinimize: (): Promise<void> => ipcRenderer.invoke('aowa:win:minimize'),
+  winMaximize: (): Promise<boolean> => ipcRenderer.invoke('aowa:win:maximize'),
+  winClose: (): Promise<void> => ipcRenderer.invoke('aowa:win:close'),
+  winIsMaximized: (): Promise<boolean> => ipcRenderer.invoke('aowa:win:isMaximized'),
+  onWinMaximized: (cb: (max: boolean) => void) => {
+    ipcRenderer.on('aowa:win:maximized', (_e, max: boolean) => cb(max))
+  },
   onSync: (cb: (s: SyncState | null) => void) => {
     ipcRenderer.on('aowa:sync', (_e, s: SyncState | null) => cb(s))
   },

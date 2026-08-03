@@ -74,13 +74,23 @@ function createDashboard(): void {
   dashboard = new BrowserWindow({
     width: 960,
     height: 640,
+    minWidth: 620,
+    minHeight: 460,
     title: 'AOWA',
     icon: APP_ICON,
-    backgroundColor: '#0f1117',
+    // Bespoke AOWA chrome (#53): frameless with a custom in-page titlebar (drag
+    // region + min/close). Windows keeps edge-resize on frameless windows while
+    // resizable is true. backgroundColor matches the renderer to avoid a flash.
+    frame: false,
+    backgroundColor: '#0a0814',
     webPreferences: { preload: join(__dirname, 'preload.js'), contextIsolation: true },
   })
   loadInto(dashboard, 'dashboard')
   dashboard.on('closed', () => (dashboard = null))
+  // Keep the custom titlebar's maximize/restore control in sync with the OS.
+  const emitMax = () => dashboard?.webContents.send('aowa:win:maximized', dashboard.isMaximized())
+  dashboard.on('maximize', emitMax)
+  dashboard.on('unmaximize', emitMax)
 }
 
 function createOverlay(): void {
@@ -410,6 +420,17 @@ if (!app.requestSingleInstanceLock()) {
     broadcastStatus()
   })
   ipcMain.handle('aowa:status', () => status())
+  // Custom-titlebar window controls (#53). Close hides to tray (the app lives in
+  // the tray; reopen from its menu) rather than quitting.
+  ipcMain.handle('aowa:win:minimize', () => dashboard?.minimize())
+  ipcMain.handle('aowa:win:maximize', () => {
+    if (!dashboard) return false
+    if (dashboard.isMaximized()) dashboard.unmaximize()
+    else dashboard.maximize()
+    return dashboard.isMaximized()
+  })
+  ipcMain.handle('aowa:win:close', () => dashboard?.close())
+  ipcMain.handle('aowa:win:isMaximized', () => dashboard?.isMaximized() ?? false)
   ipcMain.handle('aowa:gep', () => gepState())
   ipcMain.handle('aowa:sync', () => lastSync)
   ipcMain.handle('aowa:currencies', () => lastCurrencies)

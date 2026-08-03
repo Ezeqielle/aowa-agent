@@ -236,6 +236,21 @@ async function initGepIndicator(): Promise<void> {
   window.aowa.onGep(onGep)
 }
 
+// Custom titlebar window controls (#53): frameless window, so min/max/close live
+// in-page. The maximize glyph reflects the current OS window state.
+function wireTitlebar(): void {
+  const maxBtn = $('win-max')
+  const setMaxState = (max: boolean) => {
+    maxBtn.classList.toggle('is-max', max)
+    maxBtn.title = max ? 'Restore' : 'Maximize'
+  }
+  $('win-min').addEventListener('click', () => void window.aowa.winMinimize())
+  maxBtn.addEventListener('click', () => void window.aowa.winMaximize().then(setMaxState))
+  $('win-close').addEventListener('click', () => void window.aowa.winClose())
+  window.aowa.onWinMaximized(setMaxState)
+  void window.aowa.winIsMaximized().then(setMaxState)
+}
+
 function wireControls(): void {
   $('open-aowa').addEventListener('click', () => void window.aowa.openAowa())
   $('unpair').addEventListener('click', () => void window.aowa.unpair())
@@ -251,6 +266,7 @@ function wireControls(): void {
   })
 }
 
+wireTitlebar()
 wireControls()
 void initStatus()
 void initHotkey()
