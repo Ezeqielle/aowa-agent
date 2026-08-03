@@ -19,6 +19,7 @@ import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
 import { clearToken, loadHotkey, loadOverlayConfig, loadToken, saveHotkey, saveOverlayConfig, saveToken, type OverlayConfig } from './store'
 import { DEFAULT_HOTKEY, hotkeyLabel, toAccelerator, type HotkeyBinding } from './hotkey'
 import { initOverlay, setHudVisible, setOverlayHotkey } from './overlay'
+import { startForegroundWatch, stopForegroundWatch } from './focus'
 import { startEELogTail } from './eelog'
 import type { EELogEvent } from '../lib/eelog'
 
@@ -395,23 +396,6 @@ async function pullInventory(gameId: number, api: NonNullable<typeof owApp.overw
   }
 }
 
-// focusFromInfo pulls a game-focus boolean out of a GEP info-update, whichever
-// shape it arrives in (flat {feature:'game_info',key:'focus',value} or a nested
-// game_info object). Returns undefined when the update isn't about focus.
-function focusFromInfo(info: Record<string, unknown>): boolean | undefined {
-  const truthy = (v: unknown) => v === true || v === 1 || String(v).toLowerCase() === 'true' || String(v) === '1'
-  if (String(info.feature ?? '') === 'game_info' && typeof info.key === 'string' && /focus/i.test(info.key)) {
-    return truthy(info.value)
-  }
-  const gi = info.game_info as Record<string, unknown> | undefined
-  if (gi && typeof gi === 'object') {
-    if ('focus' in gi) return truthy(gi.focus)
-    if ('focused' in gi) return truthy(gi.focused)
-    if ('isInFocus' in gi) return truthy(gi.isInFocus)
-  }
-  return undefined
-}
-
 function initGep(): void {
   const api = owApp.overwolf.packages.gep
   if (!api) return
@@ -439,8 +423,7 @@ function initGep(): void {
         })
         .catch((err) => console.error('[AOWA-GEP] setRequiredFeatures failed', err))
       gep.gameRunning = true
-      setGameFocused(true) // a game-detect means it just came to the foreground
-      broadcastGep()
+      broadcastGep() // focus is driven by the foreground watcher, not GEP
     }
   })
 
@@ -468,8 +451,6 @@ function initGep(): void {
     }
     gep.gameRunning = true
     gep.lastUpdate = Date.now()
-    const focus = focusFromInfo(info)
-    if (focus !== undefined) setGameFocused(focus)
     broadcastGep()
     const items = normalizeInventory(info)
     if (items.length) {
@@ -652,6 +633,9 @@ if (!app.requestSingleInstanceLock()) {
     createDashboard()
     applyGlobalShortcut()
     applyTopbar(loadOverlayConfig().topbar) // restore top bar (stays hidden until Warframe is focused, #60)
+    // Drive top-bar visibility from the OS foreground window (GEP focus is
+    // unreliable for Warframe): show only while Warframe is in front.
+    startForegroundWatch((isWarframe) => setGameFocused(isWarframe))
     try {
       startEELogTail(eeLogPath(), (e) => {
         console.log('[AOWA-EE] event', e.kind, e.label)
@@ -666,4 +650,5 @@ if (!app.requestSingleInstanceLock()) {
   app.on('window-all-closed', () => {
     // Stay alive in the tray; quit explicitly via the tray menu.
   })
+  app.on('will-quit', () => stopForegroundWatch())
 }

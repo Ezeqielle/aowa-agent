@@ -23,7 +23,9 @@ export interface OverlayConfig {
 const DEFAULT_OVERLAY: OverlayConfig = {
   sections: { cycles: true, baro: true, fissures: true, sortie: false, archon: false },
   topbar: false,
-  hud: true,
+  // The big in-game HUD panel is OFF by default now — the slim top bar (#60) is
+  // the primary overlay. Enable the HUD from the dashboard if you want it.
+  hud: false,
 }
 
 interface State {
@@ -62,8 +64,10 @@ export const saveOverlayBounds = (b: Bounds): void => write({ ...read(), overlay
 
 export const loadOverlayConfig = (): OverlayConfig => {
   const o = read().overlay
+  // hud defaults OFF: only enabled when explicitly turned on (so existing users
+  // stop seeing the old in-game HUD panel unless they opt back in).
   return o
-    ? { sections: { ...DEFAULT_OVERLAY.sections, ...o.sections }, topbar: !!o.topbar, hud: o.hud !== false }
+    ? { sections: { ...DEFAULT_OVERLAY.sections, ...o.sections }, topbar: !!o.topbar, hud: o.hud === true }
     : { ...DEFAULT_OVERLAY, sections: { ...DEFAULT_OVERLAY.sections } }
 }
 export const saveOverlayConfig = (o: OverlayConfig): void => write({ ...read(), overlay: o })
