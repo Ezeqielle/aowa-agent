@@ -27,6 +27,9 @@ button.primary { background: var(--accent); border-color: var(--accent); }
 .list .name { font-weight:600; }
 .list .time { margin-left:auto; font-family: ui-monospace, monospace; color:var(--muted); }
 .tag { font-size:.68rem; padding:.05rem .4rem; border-radius:999px; border:1px solid var(--border); }
+.sync-stats { display:flex; gap:1.1rem; flex-wrap:wrap; margin:.2rem 0 .1rem; }
+.sync-stats .stat { font-size:.8rem; color:var(--muted); }
+.sync-stats .stat b { font-size:1.15rem; color:var(--text); font-weight:700; margin-right:.15rem; }
 .cycles { display:flex; flex-wrap:wrap; gap:.5rem; }
 .cycle { font-size:.78rem; background:var(--panel2); border:1px solid var(--border); border-radius:999px; padding:.15rem .55rem; }
 .err { color:#ef4444; font-size:.8rem; }

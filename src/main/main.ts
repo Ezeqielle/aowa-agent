@@ -204,6 +204,8 @@ async function flush(): Promise<void> {
   try {
     const res = await ingestInventory(token, items)
     console.log('[AOWA-INGEST] result:', JSON.stringify(res))
+    lastSync = { relics: res.relics, gear: res.gear, mastered: res.mastered, received: res.received, at: Date.now() }
+    broadcastSync()
   } catch (e) {
     if (e instanceof UnauthorizedError) {
       clearToken()
@@ -225,6 +227,15 @@ function gepState(): { gameRunning: boolean; lastUpdate: number } {
 function broadcastGep(): void {
   const s = gepState()
   for (const w of [dashboard, overlay]) w?.webContents.send('aowa:gep', s)
+}
+
+// ---- last inventory sync result (surfaced to the dashboard, #47) ---------
+// The counts + time of the most recent successful ingest, so the UI can confirm
+// the sync worked and show staleness. null until the first sync this run.
+type SyncState = { relics: number; gear: number; mastered: number; received: number; at: number } | null
+let lastSync: SyncState = null
+function broadcastSync(): void {
+  for (const w of [dashboard, overlay]) w?.webContents.send('aowa:sync', lastSync)
 }
 
 // ---- EE.log activity (surfaced to the UI) --------------------------------
@@ -369,6 +380,7 @@ if (!app.requestSingleInstanceLock()) {
   })
   ipcMain.handle('aowa:status', () => status())
   ipcMain.handle('aowa:gep', () => gepState())
+  ipcMain.handle('aowa:sync', () => lastSync)
   ipcMain.handle('aowa:activity', () => activity)
   ipcMain.handle('aowa:hotkey', () => ({ hotkey, label: hotkeyLabel(hotkey) }))
   ipcMain.handle('aowa:hotkey:set', (_e, h: HotkeyBinding) => {

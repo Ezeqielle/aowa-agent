@@ -25,10 +25,18 @@ export interface Activity {
   detail?: string
   at: number
 }
+export interface SyncState {
+  relics: number
+  gear: number
+  mastered: number
+  received: number
+  at: number
+}
 
 contextBridge.exposeInMainWorld('aowa', {
   status: (): Promise<AgentStatus> => ipcRenderer.invoke('aowa:status'),
   gep: (): Promise<GepState> => ipcRenderer.invoke('aowa:gep'),
+  sync: (): Promise<SyncState | null> => ipcRenderer.invoke('aowa:sync'),
   activity: (): Promise<Activity[]> => ipcRenderer.invoke('aowa:activity'),
   getHotkey: (): Promise<HotkeyInfo> => ipcRenderer.invoke('aowa:hotkey'),
   setHotkey: (h: HotkeyBinding): Promise<HotkeyInfo> => ipcRenderer.invoke('aowa:hotkey:set', h),
@@ -42,6 +50,9 @@ contextBridge.exposeInMainWorld('aowa', {
   },
   onGep: (cb: (s: GepState) => void) => {
     ipcRenderer.on('aowa:gep', (_e, s: GepState) => cb(s))
+  },
+  onSync: (cb: (s: SyncState | null) => void) => {
+    ipcRenderer.on('aowa:sync', (_e, s: SyncState | null) => cb(s))
   },
   onActivity: (cb: (a: Activity[]) => void) => {
     ipcRenderer.on('aowa:activity', (_e, a: Activity[]) => cb(a))

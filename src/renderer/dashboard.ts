@@ -1,5 +1,5 @@
 import type { Cycle, WorldState } from '../lib/aowa-data'
-import type { Activity, GepState } from './global'
+import type { Activity, GepState, SyncState } from './global'
 import { archonHtml, baroHtml, cyclesHtml, fissuresHtml, sortieHtml } from './panels'
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement
@@ -159,6 +159,33 @@ async function initActivity(): Promise<void> {
   window.aowa.onActivity(renderActivity)
 }
 
+// Account sync (#47): last inventory ingest result — relics / owned / mastered
+// counts + when. Confirms the GEP getInfo sync worked and shows staleness.
+let syncState: SyncState | null = null
+function renderSync(): void {
+  if (!syncState) {
+    $('sync').innerHTML = '<p class="muted">No inventory synced yet — launch Warframe with the agent running.</p>'
+    return
+  }
+  const s = syncState
+  $('sync').innerHTML =
+    `<div class="sync-stats">
+       <span class="stat"><b>${s.relics}</b> relics</span>
+       <span class="stat"><b>${s.gear}</b> owned</span>
+       <span class="stat"><b>${s.mastered}</b> mastered</span>
+     </div>
+     <div class="sub">Last sync ${ago(Date.now() - s.at)} · ${s.received} items</div>`
+}
+
+async function initSync(): Promise<void> {
+  syncState = await window.aowa.sync()
+  renderSync()
+  window.aowa.onSync((s) => {
+    syncState = s
+    renderSync()
+  })
+}
+
 async function initGepIndicator(): Promise<void> {
   const onGep = (s: GepState) => {
     const wasFresh = gep.lastUpdate
@@ -192,6 +219,10 @@ void initStatus()
 void initHotkey()
 void initActivity()
 void initGepIndicator()
+void initSync()
+
+// Re-render the "last sync ... ago" relative time periodically.
+setInterval(renderSync, 30_000)
 void refresh()
 setInterval(() => {
   void refresh()
