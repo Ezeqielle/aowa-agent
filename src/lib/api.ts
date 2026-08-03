@@ -81,8 +81,20 @@ async function getWithToken<T>(path: string, token: string): Promise<T> {
   return (await res.json()) as T
 }
 
+// A saved build, trimmed to what the agent surfaces (the API returns more).
+export interface Build {
+  id: string
+  name: string
+  slug: string
+  public: boolean
+  craftable?: { name?: string }
+  likeCount?: number
+  updatedAt?: string
+}
+
 export const fetchTodos = (token: string) => getWithToken<Todo[]>('/me/todos', token)
 export const fetchOwnedRelics = (token: string) => getWithToken<Record<string, number>>('/me/relics', token)
+export const fetchBuilds = (token: string) => getWithToken<Build[]>('/me/builds', token)
 
 // UnauthorizedError signals the token was revoked/invalid; the caller should drop
 // it and return to the unpaired state.

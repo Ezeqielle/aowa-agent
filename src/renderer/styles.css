@@ -22,6 +22,15 @@ body:not(.overlay) { background: radial-gradient(1200px 600px at 50% -10%, #1712
 h1 { font-size: 1.1rem; margin: 0; }
 .muted { color: var(--muted); }
 .wrap { padding: 1.2rem; max-width: 920px; margin: 0 auto; width:100%; flex:1 1 auto; overflow-y:auto; }
+
+/* Thin themed scrollbar (#57) — replaces the chunky default OS bar that clashed
+   with the bespoke chrome. Applies to any scroll container in the agent. */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #3a3358; background-clip: padding-box; }
+::-webkit-scrollbar-corner { background: transparent; }
 .topbar { display:flex; align-items:center; gap:1rem; margin-bottom: 1rem; }
 .topbar h1 { margin-right:auto; }
 .topbar-heading { font-size:.78rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:700; }

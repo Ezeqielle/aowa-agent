@@ -37,12 +37,13 @@ export interface Currencies {
   endo?: number
 }
 import type { Cycle, WorldState } from '../lib/aowa-data'
-import type { Todo } from '../lib/api'
+import type { Build, Todo } from '../lib/api'
 
 export interface MeData {
   paired: boolean
   todos?: Todo[]
   relics?: Record<string, number>
+  builds?: Build[]
 }
 
 export interface AowaBridge {
@@ -56,6 +57,7 @@ export interface AowaBridge {
   pair(code: string): Promise<{ ok: boolean; error?: string }>
   unpair(): Promise<void>
   openAowa(): Promise<void>
+  openBuild(slug: string): Promise<void>
   worldState(): Promise<{ ws: WorldState | null; cycles: Cycle[] | null }>
   me(): Promise<MeData>
   onStatus(cb: (s: AgentStatus) => void): void

@@ -67,6 +67,7 @@ async function refreshMe(): Promise<void> {
   const me = await window.aowa.me()
   if (!me.paired) {
     $('mytodos').innerHTML = '<p class="muted">Link the agent to see your daily/weekly tasks.</p>'
+    $('mybuilds').innerHTML = '<p class="muted">Link the agent to see your saved builds.</p>'
     return
   }
   const todos = me.todos ?? []
@@ -84,6 +85,31 @@ async function refreshMe(): Promise<void> {
   $('mytodos').innerHTML =
     `<div class="sub">${done}/${todos.length} done · ${relicTotal} relics owned</div>` +
     (rows ? `<ul class="list">${rows}</ul>` : '<p class="muted">No tasks.</p>')
+
+  // Saved builds (#37): open the shared build page in the browser on click.
+  const builds = me.builds ?? []
+  const buildRows = builds
+    .slice(0, 12)
+    .map(
+      (b) =>
+        `<li><span class="tag">${b.public ? '↗' : '🔒'}</span>
+        <a class="name build-link" href="#" data-slug="${esc(b.slug)}">${esc(b.name)}</a>
+        ${b.craftable?.name ? `<span class="muted">${esc(b.craftable.name)}</span>` : ''}
+        ${b.likeCount ? `<span class="time">♥ ${b.likeCount}</span>` : ''}</li>`,
+    )
+    .join('')
+  $('mybuilds').innerHTML =
+    `<div class="sub">${builds.length} saved</div>` +
+    (buildRows ? `<ul class="list">${buildRows}</ul>` : '<p class="muted">No builds yet.</p>')
+  $('mybuilds')
+    .querySelectorAll<HTMLAnchorElement>('a.build-link')
+    .forEach((a) =>
+      a.addEventListener('click', (e) => {
+        e.preventDefault()
+        const slug = a.dataset.slug
+        if (slug) void window.aowa.openBuild(slug)
+      }),
+    )
 }
 
 async function initStatus(): Promise<void> {

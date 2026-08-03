@@ -50,6 +50,7 @@ contextBridge.exposeInMainWorld('aowa', {
   pair: (code: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('aowa:pair', code),
   unpair: (): Promise<void> => ipcRenderer.invoke('aowa:unpair'),
   openAowa: (): Promise<void> => ipcRenderer.invoke('aowa:open-aowa'),
+  openBuild: (slug: string): Promise<void> => ipcRenderer.invoke('aowa:open-build', slug),
   worldState: (): Promise<unknown> => ipcRenderer.invoke('aowa:worldstate'),
   me: (): Promise<unknown> => ipcRenderer.invoke('aowa:me'),
   onStatus: (cb: (s: AgentStatus) => void) => {

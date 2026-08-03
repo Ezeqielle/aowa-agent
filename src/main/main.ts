@@ -11,8 +11,8 @@
 // against the ow-electron API and typechecks once deps are installed.
 import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut, nativeImage } from 'electron'
 import { join } from 'node:path'
-import { DEBUG_GEP, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
-import { fetchOwnedRelics, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
+import { API_BASE, DEBUG_GEP, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
+import { fetchBuilds, fetchOwnedRelics, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
 import { extractCurrencies, findInventoryValue, normalizeInventory, type Currencies } from '../lib/inventory'
 import { extractPairCode } from '../lib/deeplink'
 import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
@@ -441,6 +441,11 @@ if (!app.requestSingleInstanceLock()) {
     return { hotkey, label: hotkeyLabel(hotkey) }
   })
   ipcMain.handle('aowa:open-aowa', () => shell.openExternal('https://aowa.ashguard.io/profile'))
+  // Open a saved build's page in the browser (#37). Web base = API_BASE minus /api.
+  ipcMain.handle('aowa:open-build', (_e, slug: string) => {
+    const web = API_BASE.replace(/\/api\/?$/, '')
+    return shell.openExternal(`${web}/build/${encodeURIComponent(String(slug))}`)
+  })
   // Fetched in main (Node) so the renderer isn't blocked by CORS.
   ipcMain.handle('aowa:worldstate', async () => {
     // /events can 503 transiently (DE's CDN flaps); don't let it reject the
@@ -459,8 +464,16 @@ if (!app.requestSingleInstanceLock()) {
     const token = loadToken()
     if (!token) return { paired: false }
     try {
-      const [todos, relics] = await Promise.all([fetchTodos(token), fetchOwnedRelics(token)])
-      return { paired: true, todos, relics }
+      // Builds is best-effort: a failure there shouldn't blank todos/relics.
+      const [todos, relics, builds] = await Promise.all([
+        fetchTodos(token),
+        fetchOwnedRelics(token),
+        fetchBuilds(token).catch((e) => {
+          if (e instanceof UnauthorizedError) throw e
+          return []
+        }),
+      ])
+      return { paired: true, todos, relics, builds }
     } catch (e) {
       if (e instanceof UnauthorizedError) {
         clearToken()
