@@ -28,6 +28,10 @@ export interface SyncState {
   gear: number
   mastered: number
   received: number
+  currency: boolean
+  parts: number
+  quests: number
+  starChart: number
   at: number
 }
 export interface Currencies {

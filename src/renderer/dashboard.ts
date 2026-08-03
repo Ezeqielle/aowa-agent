@@ -185,8 +185,9 @@ async function initActivity(): Promise<void> {
   window.aowa.onActivity(renderActivity)
 }
 
-// Account sync (#47): last inventory ingest result — relics / owned / mastered
-// counts + when. Confirms the GEP getInfo sync worked and shows staleness.
+// Account sync (#47): a checklist of which data categories synced this run. The
+// numbers live in the Account card; this card just confirms each category came
+// through (✓) and shows staleness.
 let syncState: SyncState | null = null
 function renderSync(): void {
   if (!syncState) {
@@ -194,21 +195,29 @@ function renderSync(): void {
     return
   }
   const s = syncState
-  $('sync').innerHTML =
-    `<div class="sync-stats">
-       <span class="stat"><b>${s.relics}</b> relics</span>
-       <span class="stat"><b>${s.gear}</b> owned</span>
-       <span class="stat"><b>${s.mastered}</b> mastered</span>
-     </div>
-     <div class="sub">Last sync ${ago(Date.now() - s.at)} · ${s.received} items</div>`
+  const items: Array<[string, boolean]> = [
+    ['Relics', s.relics > 0],
+    ['Owned', s.gear > 0],
+    ['Mastered', s.mastered > 0],
+    ['Currency', s.currency],
+    ['Sellables', s.parts > 0],
+    ['Quests', s.quests > 0],
+    ['Star chart', s.starChart > 0],
+  ]
+  const rows = items
+    .map(([label, ok]) => `<li class="${ok ? 'ok' : 'off'}"><span class="tick">${ok ? '✓' : '○'}</span> ${label}</li>`)
+    .join('')
+  $('sync').innerHTML = `<ul class="sync-list">${rows}</ul><div class="sub">Last sync ${ago(Date.now() - s.at)} · ${s.received} items</div>`
 }
 
 async function initSync(): Promise<void> {
   syncState = await window.aowa.sync()
   renderSync()
+  renderCurrencies()
   window.aowa.onSync((s) => {
     syncState = s
     renderSync()
+    renderCurrencies() // counts live in the Account card
   })
 }
 
@@ -216,28 +225,36 @@ async function initSync(): Promise<void> {
 // inventory payload as the mastery sync. Large numbers get thousands separators.
 let currencies: Currencies | null = null
 const fmt = (n: number) => n.toLocaleString('en-US')
+// Account card (#52 + enhancement): the numbers — currency balances plus the
+// relics/owned/mastered/quest/star-chart counts (moved here from Account sync).
 function renderCurrencies(): void {
-  if (!currencies) {
-    $('currencies').innerHTML = '<p class="muted">Balances appear once Warframe syncs your inventory.</p>'
-    return
-  }
   const c = currencies
-  const cells: Array<[string, number | undefined, string]> = [
-    ['Platinum', c.platinum, 'plat'],
-    ['Credits', c.credits, 'cr'],
-    ['Ducats', c.ducats, 'ducats'],
-    ['Endo', c.endo, 'endo'],
+  const s = syncState
+  const curCells: Array<[string, number | undefined, string]> = [
+    ['Platinum', c?.platinum, 'plat'],
+    ['Credits', c?.credits, 'cr'],
+    ['Ducats', c?.ducats, 'ducats'],
+    ['Endo', c?.endo, 'endo'],
   ]
-  const rows = cells
+  const curRows = curCells
     .filter(([, v]) => typeof v === 'number')
-    .map(
-      ([label, v, cls]) =>
-        `<span class="stat cur cur-${cls}"><b>${fmt(v as number)}</b>${label}</span>`,
-    )
+    .map(([label, v, cls]) => `<span class="stat cur cur-${cls}"><b>${fmt(v as number)}</b>${label}</span>`)
     .join('')
-  $('currencies').innerHTML = rows
-    ? `<div class="sync-stats currencies">${rows}</div>`
-    : '<p class="muted">No balances in the last sync.</p>'
+  const countCells: Array<[string, number | undefined]> = [
+    ['Relics', s?.relics],
+    ['Owned', s?.gear],
+    ['Mastered', s?.mastered],
+    ['Quests', s?.quests],
+    ['Star chart', s?.starChart],
+  ]
+  const countRows = countCells
+    .filter(([, v]) => typeof v === 'number')
+    .map(([label, v]) => `<span class="stat"><b>${fmt(v as number)}</b>${label}</span>`)
+    .join('')
+  const html =
+    (curRows ? `<div class="sync-stats currencies">${curRows}</div>` : '') +
+    (countRows ? `<div class="sync-stats">${countRows}</div>` : '')
+  $('currencies').innerHTML = html || '<p class="muted">Balances appear once Warframe syncs your inventory.</p>'
 }
 
 async function initCurrencies(): Promise<void> {

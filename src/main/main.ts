@@ -227,7 +227,17 @@ async function flush(): Promise<void> {
   try {
     const res = await ingestInventory(token, items, lastCurrencies, parts, progress)
     console.log('[AOWA-INGEST] result:', JSON.stringify(res))
-    lastSync = { relics: res.relics, gear: res.gear, mastered: res.mastered, received: res.received, at: Date.now() }
+    lastSync = {
+      relics: res.relics,
+      gear: res.gear,
+      mastered: res.mastered,
+      received: res.received,
+      currency: !!lastCurrencies,
+      parts: parts?.length ?? 0,
+      quests: progress?.quests.length ?? 0,
+      starChart: progress?.starChartNodes ?? 0,
+      at: Date.now(),
+    }
     broadcastSync()
   } catch (e) {
     if (e instanceof UnauthorizedError) {
@@ -253,9 +263,20 @@ function broadcastGep(): void {
 }
 
 // ---- last inventory sync result (surfaced to the dashboard, #47) ---------
-// The counts + time of the most recent successful ingest, so the UI can confirm
-// the sync worked and show staleness. null until the first sync this run.
-type SyncState = { relics: number; gear: number; mastered: number; received: number; at: number } | null
+// Per-category counts + time of the most recent successful ingest. The dashboard
+// splits this: the "Account sync" card shows a checklist (which categories
+// synced), and the "Account" card shows the numbers. null until first sync.
+type SyncState = {
+  relics: number
+  gear: number
+  mastered: number
+  received: number
+  currency: boolean
+  parts: number
+  quests: number
+  starChart: number
+  at: number
+} | null
 let lastSync: SyncState = null
 function broadcastSync(): void {
   for (const w of [dashboard, overlay]) w?.webContents.send('aowa:sync', lastSync)

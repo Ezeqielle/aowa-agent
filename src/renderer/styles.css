@@ -58,7 +58,7 @@ button.primary:hover { filter:brightness(1.08); }
 .tag { font-size:.68rem; padding:.05rem .4rem; border-radius:999px; border:1px solid var(--border); }
 .sync-stats { display:flex; gap:1.1rem; flex-wrap:wrap; margin:.2rem 0 .1rem; }
 .sync-stats .stat { font-size:.8rem; color:var(--muted); }
-.sync-stats .stat b { font-size:1.15rem; color:var(--text); font-weight:700; margin-right:.15rem; }
+.sync-stats .stat b { font-size:1.15rem; color:var(--fg); font-weight:700; margin-right:.15rem; }
 .sync-stats.currencies { gap:.6rem; }
 .sync-stats .cur { display:flex; flex-direction:column; align-items:flex-start; gap:.05rem;
   background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:.4rem .7rem; min-width:5rem; }
@@ -91,3 +91,11 @@ body.overlay { background: transparent; overflow: hidden; }
 .hud section { margin-top:.55rem; }
 .hud h3 { font-size:.62rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted);
   margin:0 0 .35rem; padding-top:.5rem; border-top:1px solid var(--border); }
+
+/* Account sync checklist (enhancement) */
+.sync-list { list-style:none; margin:.2rem 0 .5rem; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:.25rem .8rem; }
+.sync-list li { display:flex; align-items:center; gap:.4rem; font-size:.85rem; }
+.sync-list li.ok { color:var(--fg); }
+.sync-list li.off { color:var(--muted); }
+.sync-list .tick { font-weight:700; }
+.sync-list li.ok .tick { color:var(--green); }
