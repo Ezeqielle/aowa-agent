@@ -11,6 +11,7 @@
 import type { IngestItem } from './api'
 import { GEAR_NAMES } from './gear'
 import { PART_INFO } from './parts'
+import { QUEST_NAMES } from './quests'
 import { RELIC_NAMES } from './relics'
 
 // DE inventory arrays of masterable gear → the mastery cap for that class.
@@ -184,6 +185,51 @@ export function extractParts(info: Record<string, unknown>): SellablePart[] {
     }
   }
   return Array.from(counts, ([name, v]) => ({ name, count: v.count, ducats: v.ducats }))
+}
+
+// Account progress for the progression-aware guide (#58): completed quests +
+// how many star-chart nodes the player has cleared.
+export interface Progress {
+  quests: string[] // completed quest display names
+  starChartNodes: number // distinct nodes cleared at least once
+}
+
+// extractProgress reads completed quests (QuestKeys, resolved via QUEST_NAMES)
+// and the star-chart clear count (Missions entries with Completes > 0) from the
+// DE inventory. Returns null for a non-DE / empty payload.
+export function extractProgress(info: Record<string, unknown>): Progress | null {
+  const raw = findInventoryValue(info)
+  if (raw == null) return null
+  let value: unknown = raw
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw)
+    } catch {
+      return null
+    }
+  }
+  if (!isDeInventory(value)) return null
+  const inv = value as Record<string, unknown>
+
+  const quests: string[] = []
+  const qk = Array.isArray(inv.QuestKeys) ? inv.QuestKeys : []
+  for (const raw of qk) {
+    if (!raw || typeof raw !== 'object') continue
+    const e = raw as Record<string, unknown>
+    if (e.Completed !== true) continue
+    const name = QUEST_NAMES[typeof e.ItemType === 'string' ? e.ItemType : '']
+    if (name) quests.push(name)
+  }
+
+  let starChartNodes = 0
+  const missions = Array.isArray(inv.Missions) ? inv.Missions : []
+  for (const raw of missions) {
+    if (!raw || typeof raw !== 'object') continue
+    const m = raw as Record<string, unknown>
+    if (Number(m.Completes) > 0) starChartNodes++
+  }
+
+  return { quests: quests.sort(), starChartNodes }
 }
 
 export function normalizeInventory(info: Record<string, unknown>): IngestItem[] {

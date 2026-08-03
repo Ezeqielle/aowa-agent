@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractCurrencies, extractParts, findInventoryValue, normalizeInventory } from './inventory'
+import { extractCurrencies, extractParts, extractProgress, findInventoryValue, normalizeInventory } from './inventory'
 
 describe('normalizeInventory', () => {
   it('finds inventory nested under a GEP feature category (match_info.inventory)', () => {
@@ -130,5 +130,29 @@ describe('extractParts', () => {
   it('returns [] for non-DE / empty payloads', () => {
     expect(extractParts({})).toEqual([])
     expect(extractParts({ inventory: [{ name: 'x', count: 1 }] })).toEqual([])
+  })
+})
+
+describe('extractProgress', () => {
+  it('reads completed quests + star-chart node count', () => {
+    const inv = {
+      Suits: [],
+      QuestKeys: [
+        { ItemType: '/Lotus/Types/Keys/OrokinMoonQuest/OrokinMoonQuestKeyChain', Completed: true }, // Second Dream ✓
+        { ItemType: '/Lotus/Types/Keys/WarWithinQuest/WarWithinQuestKeyChain', Completed: false }, // in progress → skip
+        { ItemType: '/Lotus/Types/Keys/SomeUnknownQuest/UnknownQuestKeyChain', Completed: true }, // unknown → skip
+      ],
+      Missions: [
+        { Tag: 'SolNode1', Completes: 5 },
+        { Tag: 'SolNode2', Completes: 1 },
+        { Tag: 'SolNode3', Completes: 0 }, // never cleared → not counted
+      ],
+    }
+    const got = extractProgress({ inventory: JSON.stringify(inv) })
+    expect(got).toEqual({ quests: ['The Second Dream'], starChartNodes: 2 })
+  })
+  it('returns null for non-DE / empty payloads', () => {
+    expect(extractProgress({})).toBeNull()
+    expect(extractProgress({ inventory: [{ name: 'x', count: 1 }] })).toBeNull()
   })
 })

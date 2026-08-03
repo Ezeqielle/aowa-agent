@@ -13,7 +13,7 @@ import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut, nativeI
 import { join } from 'node:path'
 import { API_BASE, DEBUG_GEP, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
 import { fetchBuilds, fetchOwnedRelics, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
-import { extractCurrencies, extractParts, findInventoryValue, normalizeInventory, type Currencies } from '../lib/inventory'
+import { extractCurrencies, extractParts, extractProgress, findInventoryValue, normalizeInventory, type Currencies } from '../lib/inventory'
 import { extractPairCode } from '../lib/deeplink'
 import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
 import { clearToken, loadHotkey, loadToken, saveHotkey, saveToken } from './store'
@@ -204,6 +204,7 @@ function broadcastStatus(): void {
 // ---- GEP inventory → AOWA ingest ----------------------------------------
 let pending: IngestItem[] | null = null
 let pendingParts: import('../lib/api').IngestPart[] | null = null
+let pendingProgress: import('../lib/api').IngestProgress | null = null
 let flushTimer: ReturnType<typeof setTimeout> | null = null
 
 function scheduleFlush(): void {
@@ -214,15 +215,17 @@ async function flush(): Promise<void> {
   flushTimer = null
   const items = pending
   const parts = pendingParts
+  const progress = pendingProgress
   pending = null
   pendingParts = null
+  pendingProgress = null
   const token = loadToken()
   if (!items?.length || !token) return
   // Log exactly what we send so the real GEP item naming can be mapped (#42):
   // if relics aren't matching in AOWA, these are the names to reconcile.
   console.log('[AOWA-INGEST] sending', items.length, 'items,', parts?.length ?? 0, 'parts')
   try {
-    const res = await ingestInventory(token, items, lastCurrencies, parts)
+    const res = await ingestInventory(token, items, lastCurrencies, parts, progress)
     console.log('[AOWA-INGEST] result:', JSON.stringify(res))
     lastSync = { relics: res.relics, gear: res.gear, mastered: res.mastered, received: res.received, at: Date.now() }
     broadcastSync()
@@ -312,6 +315,11 @@ async function pullInventory(gameId: number, api: NonNullable<typeof owApp.overw
     if (parts.length) {
       pendingParts = parts
       console.log('[AOWA-GEP] sellable prime parts:', parts.length)
+    }
+    const progress = extractProgress(wrapped)
+    if (progress) {
+      pendingProgress = progress
+      console.log('[AOWA-GEP] progress:', progress.quests.length, 'quests,', progress.starChartNodes, 'nodes')
     }
     if (items.length) {
       pending = items

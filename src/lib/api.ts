@@ -50,6 +50,12 @@ export interface IngestPart {
   ducats: number
 }
 
+// Account progress pushed for the progression guide (#58).
+export interface IngestProgress {
+  quests: string[]
+  starChartNodes: number
+}
+
 // ingestInventory pushes an inventory snapshot. The backend reconciles it:
 // relic names → owned relic counts, gear names → craftables marked owned. Any
 // currencies are stored per-user and surfaced on the web Account tab (#52);
@@ -59,11 +65,13 @@ export async function ingestInventory(
   items: IngestItem[],
   currencies?: IngestCurrencies | null,
   parts?: IngestPart[] | null,
+  progress?: IngestProgress | null,
   at: string = new Date().toISOString(),
 ): Promise<IngestResult> {
   const body: Record<string, unknown> = { events: [{ type: 'inventory', items, at }] }
   if (currencies) body.currencies = currencies
   if (parts && parts.length) body.parts = parts
+  if (progress) body.progress = progress
   const res = await fetch(`${API_BASE}/me/agent/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
