@@ -326,6 +326,12 @@ async function initOverlaySettings(): Promise<void> {
   topbar.addEventListener('change', save)
   hud.addEventListener('change', save)
   for (const b of secBoxes) b.addEventListener('change', save)
+  // Keep the checkboxes in sync when toggled elsewhere (hotkey / tray).
+  window.aowa.onOverlayConfig((c) => {
+    topbar.checked = c.topbar
+    hud.checked = c.hud
+    for (const b of secBoxes) b.checked = !!c.sections[b.dataset.sec as keyof typeof c.sections]
+  })
 }
 
 wireTitlebar()
