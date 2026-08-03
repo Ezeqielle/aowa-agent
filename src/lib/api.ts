@@ -20,6 +20,7 @@ export interface IngestResult {
   relics: number
   gear: number
   mastered: number
+  autoChecked?: number // todos the backend auto-checked from game state (#62)
 }
 
 // pair exchanges a one-time pairing code (from the `aowa://pair?code=` deep link)
@@ -66,12 +67,14 @@ export async function ingestInventory(
   currencies?: IngestCurrencies | null,
   parts?: IngestPart[] | null,
   progress?: IngestProgress | null,
+  completedTodos?: string[] | null,
   at: string = new Date().toISOString(),
 ): Promise<IngestResult> {
   const body: Record<string, unknown> = { events: [{ type: 'inventory', items, at }] }
   if (currencies) body.currencies = currencies
   if (parts && parts.length) body.parts = parts
   if (progress) body.progress = progress
+  if (completedTodos && completedTodos.length) body.completedTodos = completedTodos
   const res = await fetch(`${API_BASE}/me/agent/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

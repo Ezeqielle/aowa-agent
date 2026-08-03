@@ -203,6 +203,7 @@ function renderSync(): void {
     ['Sellables', s.parts > 0],
     ['Quests', s.quests > 0],
     ['Star chart', s.starChart > 0],
+    ['Todos auto-checked', s.autoChecked > 0],
   ]
   const rows = items
     .map(([label, ok]) => `<li class="${ok ? 'ok' : 'off'}"><span class="tick">${ok ? '✓' : '○'}</span> ${label}</li>`)

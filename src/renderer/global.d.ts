@@ -32,6 +32,7 @@ export interface SyncState {
   parts: number
   quests: number
   starChart: number
+  autoChecked: number
   at: number
 }
 export interface Currencies {

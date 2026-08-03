@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractCurrencies, extractParts, extractProgress, findInventoryValue, normalizeInventory } from './inventory'
+import { extractCompletedTodos, extractCurrencies, extractParts, extractProgress, findInventoryValue, normalizeInventory } from './inventory'
 
 describe('normalizeInventory', () => {
   it('finds inventory nested under a GEP feature category (match_info.inventory)', () => {
@@ -154,5 +154,31 @@ describe('extractProgress', () => {
   it('returns null for non-DE / empty payloads', () => {
     expect(extractProgress({})).toBeNull()
     expect(extractProgress({ inventory: [{ name: 'x', count: 1 }] })).toBeNull()
+  })
+})
+
+describe('extractCompletedTodos', () => {
+  it('always reports daily_login for a live DE inventory', () => {
+    const inv = { Suits: [], PlayerLevel: 10 }
+    expect(extractCompletedTodos({ inventory: inv })).toEqual(['daily_login'])
+  })
+  it('adds standing when a syndicate hit the MR-scaled daily cap', () => {
+    // MR10 cap = 1000 + 500*10 = 6000. Ostron capped, others below.
+    const inv = {
+      Suits: [],
+      PlayerLevel: 10,
+      DailyAffiliation: 3000,
+      DailyAffiliationCetus: 6000,
+      DailyAffiliationSolaris: 500,
+    }
+    expect(extractCompletedTodos({ inventory: JSON.stringify(inv) })).toEqual(['daily_login', 'standing'])
+  })
+  it('omits standing when no syndicate reached the cap', () => {
+    const inv = { Suits: [], PlayerLevel: 10, DailyAffiliation: 5999 }
+    expect(extractCompletedTodos({ inventory: inv })).toEqual(['daily_login'])
+  })
+  it('returns [] for non-DE / empty payloads', () => {
+    expect(extractCompletedTodos({})).toEqual([])
+    expect(extractCompletedTodos({ inventory: [{ name: 'x', count: 1 }] })).toEqual([])
   })
 })

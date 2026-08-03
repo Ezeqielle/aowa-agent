@@ -232,6 +232,56 @@ export function extractProgress(info: Record<string, unknown>): Progress | null 
   return { quests: quests.sort(), starChartNodes }
 }
 
+// extractCompletedTodos derives which recurring todo *template keys* the live DE
+// inventory shows as already done this period (#62), so AOWA can auto-check them
+// instead of the player ticking manually. Only structured, reliable inventory
+// signals are used (EE.log mission wording is too fragile to map by key):
+//
+//   • "standing"     — the daily syndicate standing cap. DE tracks daily standing
+//                      earned in the `DailyAffiliation*` family (one pooled counter
+//                      for the six regular syndicates + one per open-world/hub
+//                      faction), each capped at 1000 + 500·MR and reset at daily
+//                      reset. We mark it done once the player has capped at least
+//                      one syndicate (max daily earned ≥ cap).
+//   • "daily_login"  — DE auto-grants the daily login reward the moment you log in,
+//                      so a live inventory read means today's login reward is in.
+//
+// Returns [] for a non-DE / empty payload. Keys map 1:1 to backend templates.ts
+// template keys; add more here as reliable signals are identified.
+export function extractCompletedTodos(info: Record<string, unknown>): string[] {
+  const raw = findInventoryValue(info)
+  if (raw == null) return []
+  let value: unknown = raw
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw)
+    } catch {
+      return []
+    }
+  }
+  if (!isDeInventory(value)) return []
+  const inv = value as Record<string, unknown>
+
+  const done: string[] = []
+
+  // A live DE inventory read ⇒ the player is logged in today ⇒ daily login claimed.
+  done.push('daily_login')
+
+  // Daily standing cap: scan every DailyAffiliation* counter, compare the largest
+  // to the MR-scaled cap. PlayerLevel is the mastery rank in inventory.php.
+  const mr = Number(inv.PlayerLevel)
+  const cap = 1000 + 500 * (Number.isFinite(mr) && mr > 0 ? mr : 0)
+  let maxDaily = 0
+  for (const [key, v] of Object.entries(inv)) {
+    if (!key.startsWith('DailyAffiliation')) continue
+    const n = Number(v)
+    if (Number.isFinite(n) && n > maxDaily) maxDaily = n
+  }
+  if (cap > 0 && maxDaily >= cap) done.push('standing')
+
+  return done
+}
+
 export function normalizeInventory(info: Record<string, unknown>): IngestItem[] {
   const raw = findInventoryValue(info)
   if (raw == null) return []

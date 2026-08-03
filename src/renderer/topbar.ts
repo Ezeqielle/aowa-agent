@@ -10,7 +10,7 @@ const $ = (id: string) => document.getElementById(id) as HTMLElement
 let ws: WorldState | null = null
 let cycles: Cycle[] = []
 let subs: Subscription[] = []
-let cfg: OverlayConfig = { sections: { cycles: true, baro: true, fissures: true, sortie: false, archon: false }, topbar: true }
+let cfg: OverlayConfig = { sections: { cycles: true, baro: true, fissures: true, sortie: false, archon: false }, topbar: true, hud: false }
 
 const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] as string)
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
