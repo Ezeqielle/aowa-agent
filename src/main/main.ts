@@ -9,7 +9,7 @@
 // `app.overwolf.packages`. GEP/overlay are declared in package.json
 // `overwolf.packages`. Build/run on Windows (see README); this file is written
 // against the ow-electron API and typechecks once deps are installed.
-import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut } from 'electron'
+import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut, nativeImage } from 'electron'
 import { join } from 'node:path'
 import { DEBUG_GEP, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
 import { fetchOwnedRelics, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
@@ -60,14 +60,11 @@ function loadInto(win: BrowserWindow, name: string): void {
   else void win.loadFile(target)
 }
 
-// AOWA app icon (#51). Windows prefers the multi-res .ico for crisp taskbar
-// scaling; PNG elsewhere. Passed to the dashboard window so the taskbar shows
-// the AOWA mark instead of the default Electron icon; paired with
-// setAppUserModelId below, which is what actually makes Windows adopt it.
-const APP_ICON = join(
-  __dirname,
-  process.platform === 'win32' ? '../../public/icons/icon.ico' : '../../public/icons/icon256.png',
-)
+// AOWA app icon (#51). Loaded as a high-res NativeImage from the 256px PNG so the
+// window icon is applied reliably (and taskbar-scaled by the OS) rather than the
+// OS picking a stale/small .ico frame. The multi-res .ico is still what
+// electron-builder bakes into the packaged exe (win.icon).
+const APP_ICON = nativeImage.createFromPath(join(__dirname, '../../public/icons/icon256.png'))
 
 function createDashboard(): void {
   if (dashboard) {
@@ -390,10 +387,13 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   // Windows groups taskbar buttons and picks the taskbar/notification icon by
-  // AppUserModelID; without this it falls back to the generic Electron icon
-  // even though the window/exe carry the AOWA icon (#51). Must match the NSIS
-  // appId so the running app and the installed shortcut share one taskbar slot.
-  if (process.platform === 'win32') app.setAppUserModelId('io.ashguard.aowa-agent')
+  // AppUserModelID; the packaged app must match the NSIS appId so the running
+  // app and its installed shortcut share one taskbar slot + icon (#51).
+  // PACKAGED ONLY: in dev, adopting this AUMID makes Windows show the *installed*
+  // shortcut's icon (the old placeholder, if a prior build was installed) instead
+  // of the live window icon — so leave dev on the default AUMID and let the
+  // window's NativeImage icon win.
+  if (process.platform === 'win32' && app.isPackaged) app.setAppUserModelId('io.ashguard.aowa-agent')
 
   app.on('second-instance', (_e, argv) => {
     handleDeepLink(argv)
