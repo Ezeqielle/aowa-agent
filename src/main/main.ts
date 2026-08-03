@@ -18,7 +18,7 @@ import { extractPairCode } from '../lib/deeplink'
 import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
 import { clearToken, loadHotkey, loadOverlayConfig, loadToken, saveHotkey, saveOverlayConfig, saveToken, type OverlayConfig } from './store'
 import { DEFAULT_HOTKEY, hotkeyLabel, toAccelerator, type HotkeyBinding } from './hotkey'
-import { initOverlay, setOverlayHotkey } from './overlay'
+import { initOverlay, setHudVisible, setOverlayHotkey } from './overlay'
 import { startEELogTail } from './eelog'
 import type { EELogEvent } from '../lib/eelog'
 
@@ -546,6 +546,7 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle('aowa:overlay:config:set', (_e, cfg: OverlayConfig) => {
     saveOverlayConfig(cfg)
     applyTopbar(cfg.topbar)
+    setHudVisible(cfg.hud) // show/hide the in-game HUD live
     broadcastOverlayConfig(cfg)
     return cfg
   })
@@ -616,6 +617,7 @@ if (!app.requestSingleInstanceLock()) {
               hotkey,
               baseWindowOptions: overlayBaseWindowOptions(),
               loadOverlay: loadOverlayWindow,
+              hudEnabled: () => loadOverlayConfig().hud,
             })
           }
         }

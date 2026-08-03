@@ -18,10 +18,12 @@ export const OVERLAY_SECTIONS: OverlaySection[] = ['cycles', 'baro', 'fissures',
 export interface OverlayConfig {
   sections: Record<OverlaySection, boolean>
   topbar: boolean // is the always-on top bar shown (#60)
+  hud: boolean // does the in-game HUD auto-show when Warframe injects
 }
 const DEFAULT_OVERLAY: OverlayConfig = {
   sections: { cycles: true, baro: true, fissures: true, sortie: false, archon: false },
   topbar: false,
+  hud: true,
 }
 
 interface State {
@@ -61,7 +63,7 @@ export const saveOverlayBounds = (b: Bounds): void => write({ ...read(), overlay
 export const loadOverlayConfig = (): OverlayConfig => {
   const o = read().overlay
   return o
-    ? { sections: { ...DEFAULT_OVERLAY.sections, ...o.sections }, topbar: !!o.topbar }
+    ? { sections: { ...DEFAULT_OVERLAY.sections, ...o.sections }, topbar: !!o.topbar, hud: o.hud !== false }
     : { ...DEFAULT_OVERLAY, sections: { ...DEFAULT_OVERLAY.sections } }
 }
 export const saveOverlayConfig = (o: OverlayConfig): void => write({ ...read(), overlay: o })

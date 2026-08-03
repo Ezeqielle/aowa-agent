@@ -49,6 +49,10 @@ let api: OverlayApi | null = null
 let current: HotkeyBinding
 let loadOverlay: ((win: OWindow) => void) | null = null
 let baseOptions: Record<string, unknown> = {}
+// Whether the in-game HUD should auto-show on injection (#61 toggle). When off,
+// the HUD stays hidden (the always-on top bar covers glanceable info); the hotkey
+// still shows it on demand.
+let hudEnabled: () => boolean = () => true
 
 function toOverlayHotkey(h: HotkeyBinding): Record<string, unknown> {
   return {
@@ -74,7 +78,7 @@ function persistBounds(win: OWindow): void {
   })
 }
 
-async function ensureWindow(): Promise<void> {
+async function ensureWindow(autoShow = true): Promise<void> {
   if (!api || !loadOverlay) return
   if (findWindow()) return
   try {
@@ -83,10 +87,22 @@ async function ensureWindow(): Promise<void> {
     const saved = loadOverlayBounds()
     if (saved) win.window.setBounds?.(saved)
     persistBounds(win)
-    win.window.show?.()
+    if (autoShow) win.window.show?.()
+    else win.window.hide?.()
   } catch (e) {
     console.error('[AOWA-OV] createWindow failed', e)
   }
+}
+
+// Show/hide the in-game HUD live when the user toggles it (#61).
+export function setHudVisible(show: boolean): void {
+  const w = findWindow()
+  if (!w) {
+    if (show) void ensureWindow(true)
+    return
+  }
+  if (show) (w.window.restore ?? w.window.show)?.call(w.window)
+  else w.window.hide?.()
 }
 
 export function toggleOverlayWindow(): void {
@@ -124,12 +140,18 @@ export function setOverlayHotkey(h: HotkeyBinding): void {
 
 export function initOverlay(
   overlayApi: OverlayApi,
-  deps: { hotkey: HotkeyBinding; baseWindowOptions: Record<string, unknown>; loadOverlay: (win: OWindow) => void },
+  deps: {
+    hotkey: HotkeyBinding
+    baseWindowOptions: Record<string, unknown>
+    loadOverlay: (win: OWindow) => void
+    hudEnabled?: () => boolean
+  },
 ): void {
   api = overlayApi
   current = deps.hotkey
   baseOptions = deps.baseWindowOptions
   loadOverlay = deps.loadOverlay
+  if (deps.hudEnabled) hudEnabled = deps.hudEnabled
 
   try {
     api.removeAllListeners?.()
@@ -152,7 +174,7 @@ export function initOverlay(
   })
   api.on('game-injected', (info: unknown) => {
     console.log('[AOWA-OV] game-injected', (info as { id?: number })?.id)
-    void ensureWindow()
+    void ensureWindow(hudEnabled()) // only auto-show the HUD if enabled (#61)
   })
   api.on('game-injection-error', (_info: unknown, error: unknown) =>
     console.error('[AOWA-OV] injection-error', error),

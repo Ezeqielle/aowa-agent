@@ -54,6 +54,7 @@ export type OverlaySection = 'cycles' | 'baro' | 'fissures' | 'sortie' | 'archon
 export interface OverlayConfig {
   sections: Record<OverlaySection, boolean>
   topbar: boolean
+  hud: boolean
 }
 export interface Subscription {
   eventKind: string
