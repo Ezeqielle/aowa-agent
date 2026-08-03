@@ -50,7 +50,23 @@ export interface MeData {
   builds?: Build[]
 }
 
+export type OverlaySection = 'cycles' | 'baro' | 'fissures' | 'sortie' | 'archon'
+export interface OverlayConfig {
+  sections: Record<OverlaySection, boolean>
+  topbar: boolean
+}
+export interface Subscription {
+  eventKind: string
+  leadMinutes: number
+  enabled: boolean
+  filter?: { tier?: string; missionType?: string; steelPath?: boolean; railjack?: boolean }
+}
+
 export interface AowaBridge {
+  overlayConfig(): Promise<OverlayConfig>
+  setOverlayConfig(c: OverlayConfig): Promise<OverlayConfig>
+  onOverlayConfig(cb: (c: OverlayConfig) => void): void
+  subscriptions(): Promise<Subscription[]>
   status(): Promise<AgentStatus>
   gep(): Promise<GepState>
   sync(): Promise<SyncState | null>

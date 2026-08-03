@@ -2,8 +2,23 @@
 :root { color-scheme: dark; --bg:#0a0814; --bg2:#0d0a18; --panel:#14111f; --panel2:#1b1730; --border:#2a2340; --fg:#e9e6ff; --muted:#8a83a8; --accent:#00e5ff; --accent2:#ff2e88; --green:#00ff9d; --amber:#ffb800; --tbh:38px; }
 * { box-sizing: border-box; }
 body { margin:0; font-family: system-ui, sans-serif; color: var(--fg); }
-/* Dashboard-only shell layout — kept off the transparent overlay (body.overlay). */
-body:not(.overlay) { background: radial-gradient(1200px 600px at 50% -10%, #17122a 0%, var(--bg) 60%); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+/* Dashboard-only shell layout — kept off the transparent overlay + top bar. */
+body:not(.overlay):not(.topbar-body) { background: radial-gradient(1200px 600px at 50% -10%, #17122a 0%, var(--bg) 60%); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+/* Always-on top bar (#60) — transparent window; the .tb strip is the surface. */
+body.topbar-body { background:transparent; overflow:hidden; margin:0; }
+.tb { display:flex; align-items:center; gap:.5rem; height:34px; padding:0 .7rem; font-size:.76rem; white-space:nowrap; overflow:hidden;
+  background:linear-gradient(180deg, rgba(20,17,31,.92), rgba(10,8,20,.92)); border-bottom:1px solid var(--border);
+  -webkit-app-region: no-drag; color:var(--fg); }
+.tb-group { display:flex; align-items:center; gap:.4rem; }
+.tb-sep { width:1px; height:16px; background:var(--border); margin:0 .2rem; }
+.tb-chip { display:inline-flex; align-items:center; gap:.25rem; background:var(--panel2); border:1px solid var(--border);
+  border-radius:999px; padding:.1rem .5rem; }
+.tb-chip b { color:var(--accent); font-weight:700; }
+.tb-baro b { color:var(--amber); }
+.tb-fissure.sp { border-color:#c98bff; }
+.tb-fissure.sp b { color:#c98bff; }
+.tb-loading { color:var(--muted); }
 
 /* Bespoke frameless titlebar (#53) */
 .titlebar { height:var(--tbh); flex:0 0 var(--tbh); display:flex; align-items:center; justify-content:space-between;
@@ -99,3 +114,9 @@ body.overlay { background: transparent; overflow: hidden; }
 .sync-list li.off { color:var(--muted); }
 .sync-list .tick { font-weight:700; }
 .sync-list li.ok .tick { color:var(--green); }
+
+/* Overlay settings row (#60/#61) */
+.overlay-settings { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem .9rem; margin-bottom:1rem; font-size:.82rem; }
+.ov-toggle { display:inline-flex; align-items:center; gap:.3rem; color:var(--muted); cursor:pointer; }
+.ov-toggle.strong { color:var(--fg); font-weight:600; }
+.ov-toggle input { accent-color: var(--accent); }

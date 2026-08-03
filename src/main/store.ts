@@ -11,10 +11,24 @@ export interface Bounds {
   height: number
 }
 
+// Overlay sections the user can toggle on/off (#61). Applies to the top-bar
+// overlay (#60) and the HUD.
+export type OverlaySection = 'cycles' | 'baro' | 'fissures' | 'sortie' | 'archon'
+export const OVERLAY_SECTIONS: OverlaySection[] = ['cycles', 'baro', 'fissures', 'sortie', 'archon']
+export interface OverlayConfig {
+  sections: Record<OverlaySection, boolean>
+  topbar: boolean // is the always-on top bar shown (#60)
+}
+const DEFAULT_OVERLAY: OverlayConfig = {
+  sections: { cycles: true, baro: true, fissures: true, sortie: false, archon: false },
+  topbar: false,
+}
+
 interface State {
   token?: string
   hotkey?: HotkeyBinding
   overlayBounds?: Bounds
+  overlay?: OverlayConfig
 }
 
 const file = () => join(app.getPath('userData'), 'agent.json')
@@ -43,3 +57,11 @@ export const saveHotkey = (h: HotkeyBinding): void => write({ ...read(), hotkey:
 
 export const loadOverlayBounds = (): Bounds | null => read().overlayBounds ?? null
 export const saveOverlayBounds = (b: Bounds): void => write({ ...read(), overlayBounds: b })
+
+export const loadOverlayConfig = (): OverlayConfig => {
+  const o = read().overlay
+  return o
+    ? { sections: { ...DEFAULT_OVERLAY.sections, ...o.sections }, topbar: !!o.topbar }
+    : { ...DEFAULT_OVERLAY, sections: { ...DEFAULT_OVERLAY.sections } }
+}
+export const saveOverlayConfig = (o: OverlayConfig): void => write({ ...read(), overlay: o })

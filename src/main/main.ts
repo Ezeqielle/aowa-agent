@@ -9,14 +9,14 @@
 // `app.overwolf.packages`. GEP/overlay are declared in package.json
 // `overwolf.packages`. Build/run on Windows (see README); this file is written
 // against the ow-electron API and typechecks once deps are installed.
-import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut, nativeImage } from 'electron'
+import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut, nativeImage, screen } from 'electron'
 import { join } from 'node:path'
 import { API_BASE, DEBUG_GEP, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
-import { fetchBuilds, fetchOwnedRelics, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
+import { fetchBuilds, fetchOwnedRelics, fetchSubscriptions, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
 import { extractCurrencies, extractParts, extractProgress, findInventoryValue, normalizeInventory, type Currencies } from '../lib/inventory'
 import { extractPairCode } from '../lib/deeplink'
 import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
-import { clearToken, loadHotkey, loadToken, saveHotkey, saveToken } from './store'
+import { clearToken, loadHotkey, loadOverlayConfig, loadToken, saveHotkey, saveOverlayConfig, saveToken, type OverlayConfig } from './store'
 import { DEFAULT_HOTKEY, hotkeyLabel, toAccelerator, type HotkeyBinding } from './hotkey'
 import { initOverlay, setOverlayHotkey } from './overlay'
 import { startEELogTail } from './eelog'
@@ -114,6 +114,48 @@ function toggleOverlay(): void {
   if (!overlay) createOverlay()
   else if (overlay.isVisible()) overlay.hide()
   else overlay.show()
+}
+
+// ---- always-on top bar (#60) ---------------------------------------------
+// A slim, always-on-top strip docked to the top of the primary display showing
+// world cycles + Baro + subscribed fissures. Not the hotkey HUD — this is always
+// visible (desktop-level; true in-game exclusive-fullscreen needs the OW overlay
+// package). focusable:false so it never steals focus.
+let topbar: BrowserWindow | null = null
+function createTopbar(): void {
+  if (topbar) {
+    topbar.show()
+    return
+  }
+  const d = screen.getPrimaryDisplay()
+  const H = 34
+  topbar = new BrowserWindow({
+    x: d.bounds.x,
+    y: d.bounds.y,
+    width: d.bounds.width,
+    height: H,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    focusable: false,
+    hasShadow: false,
+    show: true,
+    webPreferences: { preload: join(__dirname, 'preload.js'), contextIsolation: true },
+  })
+  topbar.setAlwaysOnTop(true, 'screen-saver')
+  topbar.setVisibleOnAllWorkspaces?.(true, { visibleOnFullScreen: true })
+  loadInto(topbar, 'topbar')
+  topbar.on('closed', () => (topbar = null))
+}
+function applyTopbar(show: boolean): void {
+  if (show) createTopbar()
+  else {
+    topbar?.close()
+    topbar = null
+  }
 }
 
 // Options + loader for the Overwolf overlay-package (in-game) window. The HUD is
@@ -495,6 +537,28 @@ if (!app.requestSingleInstanceLock()) {
       cycles: cycles.status === 'fulfilled' ? cycles.value : null,
     }
   })
+
+  // Overlay config (#60/#61): which sections show + whether the top bar is on.
+  const broadcastOverlayConfig = (cfg: OverlayConfig) => {
+    for (const w of [dashboard, overlay, topbar]) w?.webContents.send('aowa:overlay:config', cfg)
+  }
+  ipcMain.handle('aowa:overlay:config', () => loadOverlayConfig())
+  ipcMain.handle('aowa:overlay:config:set', (_e, cfg: OverlayConfig) => {
+    saveOverlayConfig(cfg)
+    applyTopbar(cfg.topbar)
+    broadcastOverlayConfig(cfg)
+    return cfg
+  })
+  // The user's fissure subscriptions (via bearer) — the top bar shows only these.
+  ipcMain.handle('aowa:subscriptions', async () => {
+    const token = loadToken()
+    if (!token) return []
+    try {
+      return await fetchSubscriptions(token)
+    } catch {
+      return []
+    }
+  })
   // Personal data via the stored agent token (backend #37). Returns paired:false
   // when unlinked; drops the token if the server rejects it.
   ipcMain.handle('aowa:me', async () => {
@@ -562,6 +626,7 @@ if (!app.requestSingleInstanceLock()) {
     createTray()
     createDashboard()
     applyGlobalShortcut()
+    if (loadOverlayConfig().topbar) createTopbar() // restore always-on top bar (#60)
     try {
       startEELogTail(eeLogPath(), (e) => {
         console.log('[AOWA-EE] event', e.kind, e.label)

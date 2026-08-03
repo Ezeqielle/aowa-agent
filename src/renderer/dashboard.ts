@@ -309,8 +309,25 @@ function wireControls(): void {
   })
 }
 
+// Overlay settings (#60/#61): top-bar toggle + which sections show.
+async function initOverlaySettings(): Promise<void> {
+  const cfg = await window.aowa.overlayConfig()
+  const topbar = $('ov-topbar') as HTMLInputElement
+  topbar.checked = cfg.topbar
+  const secBoxes = Array.from(document.querySelectorAll<HTMLInputElement>('#overlay-settings input[data-sec]'))
+  for (const b of secBoxes) b.checked = !!cfg.sections[b.dataset.sec as keyof typeof cfg.sections]
+  const save = () => {
+    const sections = { ...cfg.sections }
+    for (const b of secBoxes) sections[b.dataset.sec as keyof typeof sections] = b.checked
+    void window.aowa.setOverlayConfig({ topbar: topbar.checked, sections })
+  }
+  topbar.addEventListener('change', save)
+  for (const b of secBoxes) b.addEventListener('change', save)
+}
+
 wireTitlebar()
 wireControls()
+void initOverlaySettings()
 void initStatus()
 void initHotkey()
 void initActivity()

@@ -15,6 +15,7 @@ export default defineConfig({
       input: {
         dashboard: r('src/renderer/dashboard.html'),
         overlay: r('src/renderer/overlay.html'),
+        topbar: r('src/renderer/topbar.html'),
       },
     },
   },

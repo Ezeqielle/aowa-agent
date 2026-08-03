@@ -43,7 +43,25 @@ export interface Currencies {
   endo?: number
 }
 
+export type OverlaySection = 'cycles' | 'baro' | 'fissures' | 'sortie' | 'archon'
+export interface OverlayConfig {
+  sections: Record<OverlaySection, boolean>
+  topbar: boolean
+}
+export interface Subscription {
+  eventKind: string
+  leadMinutes: number
+  enabled: boolean
+  filter?: { tier?: string; missionType?: string; steelPath?: boolean; railjack?: boolean }
+}
+
 contextBridge.exposeInMainWorld('aowa', {
+  overlayConfig: (): Promise<OverlayConfig> => ipcRenderer.invoke('aowa:overlay:config'),
+  setOverlayConfig: (c: OverlayConfig): Promise<OverlayConfig> => ipcRenderer.invoke('aowa:overlay:config:set', c),
+  onOverlayConfig: (cb: (c: OverlayConfig) => void) => {
+    ipcRenderer.on('aowa:overlay:config', (_e, c: OverlayConfig) => cb(c))
+  },
+  subscriptions: (): Promise<Subscription[]> => ipcRenderer.invoke('aowa:subscriptions'),
   status: (): Promise<AgentStatus> => ipcRenderer.invoke('aowa:status'),
   gep: (): Promise<GepState> => ipcRenderer.invoke('aowa:gep'),
   sync: (): Promise<SyncState | null> => ipcRenderer.invoke('aowa:sync'),

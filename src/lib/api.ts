@@ -110,6 +110,17 @@ export interface Build {
   updatedAt?: string
 }
 
+// A notification subscription (#60): the user's per-kind alert rules. For the
+// top-bar overlay we use the fissure rules' filters to pick which fissures show.
+export interface Subscription {
+  eventKind: string
+  leadMinutes: number
+  enabled: boolean
+  filter?: { tier?: string; missionType?: string; steelPath?: boolean; railjack?: boolean }
+}
+
+export const fetchSubscriptions = (token: string) =>
+  getWithToken<Subscription[]>('/me/notifications/subscriptions', token)
 export const fetchTodos = (token: string) => getWithToken<Todo[]>('/me/todos', token)
 export const fetchOwnedRelics = (token: string) => getWithToken<Record<string, number>>('/me/relics', token)
 export const fetchBuilds = (token: string) => getWithToken<Build[]>('/me/builds', token)
