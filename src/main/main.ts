@@ -18,8 +18,7 @@ import { extractPairCode } from '../lib/deeplink'
 import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
 import { clearToken, loadHotkey, loadOverlayConfig, loadToken, saveHotkey, saveOverlayConfig, saveToken, type OverlayConfig } from './store'
 import { DEFAULT_HOTKEY, hotkeyLabel, toAccelerator, type HotkeyBinding } from './hotkey'
-import { initOverlay, setHudVisible, setOverlayHotkey } from './overlay'
-import { startForegroundWatch, stopForegroundWatch } from './focus'
+import { initOverlay, setOverlayVisible, setOverlayHotkey } from './overlay'
 import { startEELogTail } from './eelog'
 import type { EELogEvent } from '../lib/eelog'
 
@@ -93,83 +92,46 @@ function createDashboard(): void {
   dashboard.on('unmaximize', emitMax)
 }
 
-// ---- always-on top bar (#60) ---------------------------------------------
-// A slim strip docked to the top of the primary display showing world cycles +
-// Baro + subscribed fissures. Only visible when Warframe is the focused game
-// (gep.gameFocused) so it never covers the browser/desktop when you alt-tab out.
-// focusable:false so it never steals focus.
-let topbar: BrowserWindow | null = null
-let topbarEnabled = false
-function createTopbar(): void {
-  if (topbar) return
+// The top bar (#60) is now a native Overwolf overlay window (see overlay.ts):
+// Overwolf injects it into Warframe and shows/hides it with the game, so it only
+// appears in-game and never covers the desktop/browser. topbarBounds is the
+// full-width strip docked to the top of the primary display.
+function topbarBounds(): { x: number; y: number; width: number; height: number } {
   const d = screen.getPrimaryDisplay()
-  topbar = new BrowserWindow({
-    x: d.bounds.x,
-    y: d.bounds.y,
-    width: d.bounds.width,
-    height: 34,
-    frame: false,
-    transparent: true,
-    resizable: false,
-    movable: false,
-    skipTaskbar: true,
-    alwaysOnTop: true,
-    focusable: false,
-    hasShadow: false,
-    show: false,
-    webPreferences: { preload: join(__dirname, 'preload.js'), contextIsolation: true },
-  })
-  topbar.setAlwaysOnTop(true, 'screen-saver')
-  topbar.setVisibleOnAllWorkspaces?.(true, { visibleOnFullScreen: true })
-  loadInto(topbar, 'topbar')
-  topbar.on('closed', () => (topbar = null))
-}
-// applyTopbar sets whether the top bar is enabled; syncTopbar decides if it's
-// actually shown right now (enabled AND Warframe focused).
-function applyTopbar(enabled: boolean): void {
-  topbarEnabled = enabled
-  if (enabled) createTopbar()
-  else {
-    topbar?.close()
-    topbar = null
-  }
-  syncTopbar()
-}
-function syncTopbar(): void {
-  if (!topbar) return
-  if (topbarEnabled && gep.gameFocused) topbar.showInactive()
-  else topbar.hide()
+  return { x: 0, y: 0, width: d.bounds.width, height: 34 }
 }
 
-// Options + loader for the Overwolf overlay-package (in-game) window. The HUD is
-// draggable via CSS (-webkit-app-region), so no OS titlebar is needed.
+// Options + loader for the Overwolf overlay-package (in-game) window — now the
+// top-bar strip (full-width, thin, top of screen). passthrough lets clicks fall
+// through to the game since it's a read-only info strip.
 function overlayBaseWindowOptions(): Record<string, unknown> {
+  const b = topbarBounds()
   return {
-    width: 340,
-    height: 520,
+    width: b.width,
+    height: b.height,
     transparent: true,
     frame: false,
-    resizable: true,
-    passthrough: 'noPassThrough',
+    resizable: false,
+    passthrough: 'passThrough',
     webPreferences: { preload: join(__dirname, 'preload.js'), contextIsolation: true },
   }
 }
 function loadOverlayWindow(win: {
   window: { loadURL?(u: string): Promise<unknown>; loadFile?(p: string): Promise<unknown> }
 }): void {
-  const target = RENDERER('overlay')
+  const target = RENDERER('topbar')
   if (target.startsWith('http')) void win.window.loadURL?.(target)
   else void win.window.loadFile?.(target)
 }
 
-// Toggle the always-on top bar on/off (persisted), broadcasting so the dashboard
-// checkbox stays in sync. Bound to the hotkey + tray.
+// Toggle the top bar on/off (persisted), showing/hiding the Overwolf overlay and
+// keeping the dashboard checkbox in sync. Bound to the hotkey + tray.
 function toggleTopbar(): void {
   const cfg = loadOverlayConfig()
   cfg.topbar = !cfg.topbar
   saveOverlayConfig(cfg)
-  applyTopbar(cfg.topbar)
-  for (const w of [dashboard, topbar]) w?.webContents.send('aowa:overlay:config', cfg)
+  setOverlayVisible(cfg.topbar, topbarBounds())
+  for (const w of [dashboard]) w?.webContents.send('aowa:overlay:config', cfg)
 }
 
 // Desktop global shortcut → toggle the top bar (in-game exclusive fullscreen uses
@@ -287,17 +249,7 @@ async function flush(): Promise<void> {
 // ---- GEP capture state (surfaced to the UI) ------------------------------
 // gameRunning: Warframe is detected + GEP enabled. lastUpdate: epoch-ms of the
 // last inventory info push (the app is "receiving game data" when this is recent).
-// gameFocused: Warframe is the foreground window (from GEP game_info focus) — the
-// top bar only shows when this is true, so it never covers the desktop/browser.
-const gep = { gameRunning: false, gameFocused: false, lastUpdate: 0 as number }
-
-// setGameFocused updates focus and re-syncs the top bar's visibility.
-function setGameFocused(focused: boolean): void {
-  if (gep.gameFocused === focused) return
-  gep.gameFocused = focused
-  console.log('[AOWA-GEP] game focus →', focused)
-  syncTopbar()
-}
+const gep = { gameRunning: false, lastUpdate: 0 as number }
 
 function gepState(): { gameRunning: boolean; lastUpdate: number } {
   return { gameRunning: gep.gameRunning, lastUpdate: gep.lastUpdate }
@@ -466,7 +418,6 @@ function initGep(): void {
       infoPollTimer = null
     }
     gep.gameRunning = false
-    setGameFocused(false) // game gone → hide the top bar
     broadcastGep()
   })
 
@@ -544,13 +495,12 @@ if (!app.requestSingleInstanceLock()) {
 
   // Overlay config (#60/#61): which sections show + whether the top bar is on.
   const broadcastOverlayConfig = (cfg: OverlayConfig) => {
-    for (const w of [dashboard, topbar]) w?.webContents.send('aowa:overlay:config', cfg)
+    for (const w of [dashboard]) w?.webContents.send('aowa:overlay:config', cfg)
   }
   ipcMain.handle('aowa:overlay:config', () => loadOverlayConfig())
   ipcMain.handle('aowa:overlay:config:set', (_e, cfg: OverlayConfig) => {
     saveOverlayConfig(cfg)
-    applyTopbar(cfg.topbar)
-    setHudVisible(cfg.hud) // show/hide the in-game HUD live
+    setOverlayVisible(cfg.topbar, topbarBounds()) // show/hide the OW top-bar overlay
     broadcastOverlayConfig(cfg)
     return cfg
   })
@@ -621,7 +571,8 @@ if (!app.requestSingleInstanceLock()) {
               hotkey,
               baseWindowOptions: overlayBaseWindowOptions(),
               loadOverlay: loadOverlayWindow,
-              hudEnabled: () => loadOverlayConfig().hud,
+              enabled: () => loadOverlayConfig().topbar,
+              bounds: () => topbarBounds(),
             })
           }
         }
@@ -632,10 +583,8 @@ if (!app.requestSingleInstanceLock()) {
     createTray()
     createDashboard()
     applyGlobalShortcut()
-    applyTopbar(loadOverlayConfig().topbar) // restore top bar (stays hidden until Warframe is focused, #60)
-    // Drive top-bar visibility from the OS foreground window (GEP focus is
-    // unreliable for Warframe): show only while Warframe is in front.
-    startForegroundWatch((isWarframe) => setGameFocused(isWarframe))
+    // The top bar is an Overwolf overlay now — it appears when Warframe injects
+    // (see overlay.ts), gated on the topbar toggle. No desktop window to restore.
     try {
       startEELogTail(eeLogPath(), (e) => {
         console.log('[AOWA-EE] event', e.kind, e.label)
@@ -650,5 +599,4 @@ if (!app.requestSingleInstanceLock()) {
   app.on('window-all-closed', () => {
     // Stay alive in the tray; quit explicitly via the tray menu.
   })
-  app.on('will-quit', () => stopForegroundWatch())
 }

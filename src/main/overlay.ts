@@ -12,7 +12,7 @@
 // take a runtime dependency on a package that only exists inside ow-electron.
 import { WARFRAME_GAME_ID } from '../lib/config'
 import type { HotkeyBinding } from './hotkey'
-import { loadOverlayBounds, saveOverlayBounds, type Bounds } from './store'
+import type { Bounds } from './store'
 
 interface OWindow {
   name: string
@@ -49,10 +49,10 @@ let api: OverlayApi | null = null
 let current: HotkeyBinding
 let loadOverlay: ((win: OWindow) => void) | null = null
 let baseOptions: Record<string, unknown> = {}
-// Whether the in-game HUD should auto-show on injection (#61 toggle). When off,
-// the HUD stays hidden (the always-on top bar covers glanceable info); the hotkey
-// still shows it on demand.
-let hudEnabled: () => boolean = () => true
+// Whether the top bar should auto-show when Warframe injects (#60/#61 toggle).
+let enabled: () => boolean = () => true
+// The top-strip bounds (full-width, thin, top of screen).
+let boundsOf: () => Bounds = () => ({ x: 0, y: 0, width: 1920, height: 34 })
 
 function toOverlayHotkey(h: HotkeyBinding): Record<string, unknown> {
   return {
@@ -71,22 +71,13 @@ function findWindow(): OWindow | null {
   }
 }
 
-function persistBounds(win: OWindow): void {
-  win.window.on?.('moved', () => {
-    const b = win.window.getBounds?.()
-    if (b) saveOverlayBounds(b)
-  })
-}
-
 async function ensureWindow(autoShow = true): Promise<void> {
   if (!api || !loadOverlay) return
   if (findWindow()) return
   try {
     const win = await api.createWindow({ ...baseOptions, name: WINDOW_NAME })
     loadOverlay(win)
-    const saved = loadOverlayBounds()
-    if (saved) win.window.setBounds?.(saved)
-    persistBounds(win)
+    win.window.setBounds?.(boundsOf()) // dock the strip to the top
     if (autoShow) win.window.show?.()
     else win.window.hide?.()
   } catch (e) {
@@ -94,13 +85,14 @@ async function ensureWindow(autoShow = true): Promise<void> {
   }
 }
 
-// Show/hide the in-game HUD live when the user toggles it (#61).
-export function setHudVisible(show: boolean): void {
+// Show/hide the top-bar overlay live when the user toggles it (#60/#61).
+export function setOverlayVisible(show: boolean, bounds?: Bounds): void {
   const w = findWindow()
   if (!w) {
     if (show) void ensureWindow(true)
     return
   }
+  if (bounds) w.window.setBounds?.(bounds)
   if (show) (w.window.restore ?? w.window.show)?.call(w.window)
   else w.window.hide?.()
 }
@@ -144,14 +136,16 @@ export function initOverlay(
     hotkey: HotkeyBinding
     baseWindowOptions: Record<string, unknown>
     loadOverlay: (win: OWindow) => void
-    hudEnabled?: () => boolean
+    enabled?: () => boolean
+    bounds?: () => Bounds
   },
 ): void {
   api = overlayApi
   current = deps.hotkey
   baseOptions = deps.baseWindowOptions
   loadOverlay = deps.loadOverlay
-  if (deps.hudEnabled) hudEnabled = deps.hudEnabled
+  if (deps.enabled) enabled = deps.enabled
+  if (deps.bounds) boundsOf = deps.bounds
 
   try {
     api.removeAllListeners?.()
@@ -174,7 +168,7 @@ export function initOverlay(
   })
   api.on('game-injected', (info: unknown) => {
     console.log('[AOWA-OV] game-injected', (info as { id?: number })?.id)
-    void ensureWindow(hudEnabled()) // only auto-show the HUD if enabled (#61)
+    void ensureWindow(enabled()) // only auto-show the top bar if enabled (#60/#61)
   })
   api.on('game-injection-error', (_info: unknown, error: unknown) =>
     console.error('[AOWA-OV] injection-error', error),

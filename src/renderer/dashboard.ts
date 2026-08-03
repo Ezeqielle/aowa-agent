@@ -313,23 +313,19 @@ function wireControls(): void {
 async function initOverlaySettings(): Promise<void> {
   const cfg = await window.aowa.overlayConfig()
   const topbar = $('ov-topbar') as HTMLInputElement
-  const hud = $('ov-hud') as HTMLInputElement
   topbar.checked = cfg.topbar
-  hud.checked = cfg.hud
   const secBoxes = Array.from(document.querySelectorAll<HTMLInputElement>('#overlay-settings input[data-sec]'))
   for (const b of secBoxes) b.checked = !!cfg.sections[b.dataset.sec as keyof typeof cfg.sections]
   const save = () => {
     const sections = { ...cfg.sections }
     for (const b of secBoxes) sections[b.dataset.sec as keyof typeof sections] = b.checked
-    void window.aowa.setOverlayConfig({ topbar: topbar.checked, hud: hud.checked, sections })
+    void window.aowa.setOverlayConfig({ topbar: topbar.checked, hud: cfg.hud, sections })
   }
   topbar.addEventListener('change', save)
-  hud.addEventListener('change', save)
   for (const b of secBoxes) b.addEventListener('change', save)
   // Keep the checkboxes in sync when toggled elsewhere (hotkey / tray).
   window.aowa.onOverlayConfig((c) => {
     topbar.checked = c.topbar
-    hud.checked = c.hud
     for (const b of secBoxes) b.checked = !!c.sections[b.dataset.sec as keyof typeof c.sections]
   })
 }
