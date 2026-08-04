@@ -52,6 +52,13 @@ h1 { font-size: 1.1rem; margin: 0; }
 .topbar h1 { margin-right:auto; }
 .topbar-heading { font-size:.78rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:700; }
 .status { display:flex; align-items:center; gap:.5rem; font-size:.85rem; }
+.tabs { display:flex; gap:.2rem; margin-bottom:1.2rem; border-bottom:1px solid var(--border); }
+.tab { background:none; border:none; border-radius:0; padding:.55rem .95rem; margin-bottom:-1px; color:var(--muted);
+  font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; border-bottom:2px solid transparent; }
+.tab:hover { color:var(--fg); }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tabpanel { display:none; }
+.tabpanel.active { display:block; }
 .dot { width:.7rem; height:.7rem; border-radius:50%; background:var(--muted); }
 .dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
 .dot.warn { background: var(--amber); box-shadow: 0 0 8px var(--amber); }

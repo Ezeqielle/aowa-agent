@@ -42,7 +42,7 @@
     </header>
     <div class="wrap">
       <div class="topbar">
-        <h1 class="topbar-heading">Dashboard</h1>
+        <h1 class="topbar-heading" id="topbar-heading">Dashboard</h1>
         <div class="status">
           <span class="dot" id="dot"></span><span id="status-text">…</span>
         </div>
@@ -50,45 +50,68 @@
           <span class="dot" id="gep-dot"></span><span id="gep-text">Game data: waiting</span>
         </div>
       </div>
-
-      <div class="pair" style="margin-bottom:1rem">
-        <button class="primary" id="open-aowa">Link agent (open AOWA)</button>
-        <input id="code" type="text" placeholder="or paste one-time code" autocomplete="off" spellcheck="false" />
-        <button id="pair">Pair</button>
-        <button id="unpair">Unpair</button>
-      </div>
       <p class="err" id="err"></p>
 
-      <div class="hotkeyrow">
-        <span class="muted">Overlay hotkey</span>
-        <button id="hk-btn" class="hk" title="Click, then press a key combo">…</button>
-        <span class="muted hk-hint">toggles the top bar</span>
-      </div>
+      <nav class="tabs" role="tablist" aria-label="Dashboard sections">
+        <button class="tab" role="tab" data-tab="overlay">Overlay</button>
+        <button class="tab" role="tab" data-tab="events">Events</button>
+        <button class="tab" role="tab" data-tab="agent">Agent</button>
+        <button class="tab" role="tab" data-tab="play">Play</button>
+      </nav>
 
-      <div class="overlay-settings" id="overlay-settings">
-        <label class="ov-toggle strong"><input type="checkbox" id="ov-topbar" /> In-game top bar</label>
-        <label class="ov-toggle"><input type="checkbox" id="ov-background" /> Dark background</label>
-        <span class="muted">show:</span>
-        <label class="ov-toggle"><input type="checkbox" data-sec="cycles" /> Cycles</label>
-        <label class="ov-toggle"><input type="checkbox" data-sec="baro" /> Baro</label>
-        <label class="ov-toggle"><input type="checkbox" data-sec="fissures" /> Fissures (subscribed)</label>
-        <label class="ov-toggle"><input type="checkbox" data-sec="sortie" /> Sortie</label>
-        <label class="ov-toggle"><input type="checkbox" data-sec="archon" /> Archon</label>
-      </div>
+      <!-- Overlay: everything that controls the in-game top bar. -->
+      <section class="tabpanel" role="tabpanel" data-panel="overlay">
+        <div class="hotkeyrow">
+          <span class="muted">Overlay hotkey</span>
+          <button id="hk-btn" class="hk" title="Click, then press a key combo">…</button>
+          <span class="muted hk-hint">toggles the top bar</span>
+        </div>
 
-      <div id="cycles" class="cycles" style="margin-bottom:1rem"></div>
+        <div class="overlay-settings" id="overlay-settings">
+          <label class="ov-toggle strong"><input type="checkbox" id="ov-topbar" /> In-game top bar</label>
+          <label class="ov-toggle"><input type="checkbox" id="ov-background" /> Dark background</label>
+          <span class="muted">show:</span>
+          <label class="ov-toggle"><input type="checkbox" data-sec="cycles" /> Cycles</label>
+          <label class="ov-toggle"><input type="checkbox" data-sec="baro" /> Baro</label>
+          <label class="ov-toggle"><input type="checkbox" data-sec="fissures" /> Fissures (subscribed)</label>
+          <label class="ov-toggle"><input type="checkbox" data-sec="sortie" /> Sortie</label>
+          <label class="ov-toggle"><input type="checkbox" data-sec="archon" /> Archon</label>
+        </div>
+      </section>
 
-      <div class="grid">
-        <div class="card"><h2>Baro Ki'Teer</h2><div id="baro"></div></div>
-        <div class="card"><h2>Sortie</h2><div id="sortie"></div></div>
-        <div class="card"><h2>Archon Hunt</h2><div id="archon"></div></div>
-        <div class="card"><h2>Account sync</h2><div id="sync"><p class="muted">No inventory synced yet — launch Warframe with the agent running.</p></div></div>
-        <div class="card"><h2>Account</h2><div id="currencies"><p class="muted">Balances appear once Warframe syncs your inventory.</p></div></div>
-        <div class="card"><h2>My Todos</h2><div id="mytodos"><p class="muted">Link the agent to see your daily/weekly tasks.</p></div></div>
-        <div class="card"><h2>My Builds</h2><div id="mybuilds"><p class="muted">Link the agent to see your saved builds.</p></div></div>
-        <div class="card"><h2>Recent activity</h2><div id="activity"><p class="muted">Waiting for in-game activity (EE.log)…</p></div></div>
-        <div class="card" style="grid-column:1/-1"><h2>Void Fissures</h2><div id="fissures"></div></div>
-      </div>
+      <!-- Events: world-state timers + rotating world feed. -->
+      <section class="tabpanel" role="tabpanel" data-panel="events">
+        <div id="cycles" class="cycles" style="margin-bottom:1rem"></div>
+        <div class="grid">
+          <div class="card"><h2>Baro Ki'Teer</h2><div id="baro"></div></div>
+          <div class="card"><h2>Sortie</h2><div id="sortie"></div></div>
+          <div class="card"><h2>Archon Hunt</h2><div id="archon"></div></div>
+        </div>
+      </section>
+
+      <!-- Agent: link/pair the agent + what it syncs from the live game. -->
+      <section class="tabpanel" role="tabpanel" data-panel="agent">
+        <div class="pair" style="margin-bottom:1rem">
+          <button class="primary" id="open-aowa">Link agent (open AOWA)</button>
+          <input id="code" type="text" placeholder="or paste one-time code" autocomplete="off" spellcheck="false" />
+          <button id="pair">Pair</button>
+          <button id="unpair">Unpair</button>
+        </div>
+        <div class="grid">
+          <div class="card"><h2>Account sync</h2><div id="sync"><p class="muted">No inventory synced yet — launch Warframe with the agent running.</p></div></div>
+          <div class="card"><h2>Account</h2><div id="currencies"><p class="muted">Balances appear once Warframe syncs your inventory.</p></div></div>
+          <div class="card"><h2>Recent activity</h2><div id="activity"><p class="muted">Waiting for in-game activity (EE.log)…</p></div></div>
+        </div>
+      </section>
+
+      <!-- Play: your personal tasks, loadouts and farming targets. -->
+      <section class="tabpanel" role="tabpanel" data-panel="play">
+        <div class="grid">
+          <div class="card"><h2>My Todos</h2><div id="mytodos"><p class="muted">Link the agent to see your daily/weekly tasks.</p></div></div>
+          <div class="card"><h2>My Builds</h2><div id="mybuilds"><p class="muted">Link the agent to see your saved builds.</p></div></div>
+          <div class="card" style="grid-column:1/-1"><h2>Void Fissures</h2><div id="fissures"></div></div>
+        </div>
+      </section>
     </div>
     <script type="module" src="./dashboard.ts"></script>
   </body>

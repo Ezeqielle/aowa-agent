@@ -23,6 +23,12 @@ function renderGep(): void {
   const fresh = gep.lastUpdate > 0 && Date.now() - gep.lastUpdate < 120_000
   dot.classList.toggle('on', fresh)
   dot.classList.toggle('warn', gep.gameRunning && !fresh)
+  // When data isn't live, hint how to force a fresh inventory read: the game
+  // only re-sends inventory on a relay transition, so tell the user to bounce
+  // through a relay. Live ⇒ restore the plain "what is this" tooltip.
+  $('gep-status').title = fresh
+    ? 'Live in-game data via Overwolf (GEP)'
+    : 'Enter and go out of a relay to sync data'
   if (gep.lastUpdate > 0) {
     text.textContent = fresh
       ? `Game data: live · ${ago(Date.now() - gep.lastUpdate)}`
@@ -337,7 +343,37 @@ async function initOverlaySettings(): Promise<void> {
   })
 }
 
+// Tab navigation (#79): group the dashboard into Overlay / Events / Agent /
+// Play. Every card keeps its id, so the render functions are unaffected — this
+// only toggles which panel is visible. The last-viewed tab is remembered.
+function initTabs(): void {
+  const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.tab'))
+  const panels = Array.from(document.querySelectorAll<HTMLElement>('.tabpanel'))
+  const heading = $('topbar-heading')
+  const KEY = 'aowa.dash.tab'
+  const select = (name: string) => {
+    tabs.forEach((t) => t.classList.toggle('active', t.dataset.tab === name))
+    panels.forEach((p) => p.classList.toggle('active', p.dataset.panel === name))
+    const active = tabs.find((t) => t.dataset.tab === name)
+    if (active) heading.textContent = active.textContent
+    try {
+      localStorage.setItem(KEY, name)
+    } catch {
+      /* private mode — non-fatal */
+    }
+  }
+  for (const t of tabs) t.addEventListener('click', () => select(t.dataset.tab as string))
+  let saved: string | null = null
+  try {
+    saved = localStorage.getItem(KEY)
+  } catch {
+    /* ignore */
+  }
+  select(saved && tabs.some((t) => t.dataset.tab === saved) ? saved : 'events')
+}
+
 wireTitlebar()
+initTabs()
 wireControls()
 void initOverlaySettings()
 void initStatus()
