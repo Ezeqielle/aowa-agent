@@ -76,6 +76,12 @@ export interface IngestPending {
   completeAt: number
 }
 
+// One owned crafting resource pushed for the Foundry component counts (#66).
+export interface IngestResource {
+  name: string
+  count: number
+}
+
 // ingestInventory pushes an inventory snapshot. The backend reconciles it:
 // relic names → owned relic counts, gear names → craftables marked owned. Any
 // currencies are stored per-user and surfaced on the web Account tab (#52);
@@ -90,6 +96,7 @@ export async function ingestInventory(
   completedTodos?: string[] | null,
   syndicates?: IngestSyndicate[] | null,
   pending?: IngestPending[] | null,
+  resources?: IngestResource[] | null,
   at: string = new Date().toISOString(),
 ): Promise<IngestResult> {
   const body: Record<string, unknown> = { events: [{ type: 'inventory', items, at }] }
@@ -99,6 +106,7 @@ export async function ingestInventory(
   if (completedTodos && completedTodos.length) body.completedTodos = completedTodos
   if (syndicates && syndicates.length) body.syndicates = syndicates
   if (pending) body.pending = pending // always send (empty = nothing cooking)
+  if (resources) body.resources = resources
   const res = await fetch(`${API_BASE}/me/agent/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

@@ -13,6 +13,7 @@ import { GEAR_NAMES } from './gear'
 import { PART_INFO } from './parts'
 import { QUEST_NAMES } from './quests'
 import { RELIC_NAMES } from './relics'
+import { RESOURCE_NAMES } from './resources'
 
 // DE inventory arrays of masterable gear → the mastery cap for that class.
 // Mastery XP (lifetime, from XPInfo) ≥ cap ⇒ leveled to max at least once.
@@ -205,6 +206,43 @@ export function extractParts(info: Record<string, unknown>): SellablePart[] {
     }
   }
   return Array.from(counts, ([name, v]) => ({ name, count: v.count, ducats: v.ducats }))
+}
+
+// One owned crafting resource (#66): name + quantity in the inventory.
+export interface OwnedResource {
+  name: string
+  count: number
+}
+
+// extractResources reads owned crafting-resource quantities from the DE inventory
+// MiscItems (keyed by uniqueName → RESOURCE_NAMES), for the Foundry owned-vs-
+// needed component counts. Returns [] for a non-DE / empty payload.
+export function extractResources(info: Record<string, unknown>): OwnedResource[] {
+  const raw = findInventoryValue(info)
+  if (raw == null) return []
+  let value: unknown = raw
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw)
+    } catch {
+      return []
+    }
+  }
+  if (!isDeInventory(value)) return []
+  const inv = value as Record<string, unknown>
+
+  const counts = new Map<string, number>()
+  const misc = Array.isArray(inv.MiscItems) ? (inv.MiscItems as unknown[]) : []
+  for (const raw of misc) {
+    if (!raw || typeof raw !== 'object') continue
+    const mi = raw as Record<string, unknown>
+    const name = RESOURCE_NAMES[typeof mi.ItemType === 'string' ? mi.ItemType : '']
+    if (!name) continue
+    const c = Number(mi.ItemCount)
+    if (!Number.isFinite(c) || c <= 0) continue
+    counts.set(name, (counts.get(name) ?? 0) + c)
+  }
+  return Array.from(counts, ([name, count]) => ({ name, count }))
 }
 
 // One in-progress foundry build (#66): the item cooking + when it finishes.
