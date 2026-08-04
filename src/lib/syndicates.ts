@@ -11,8 +11,9 @@
 export interface IngestSyndicate {
   key: string // stable slug ("steel_meridian")
   name: string // display ("Steel Meridian")
-  standing: number // lifetime standing
-  title?: string // rank title when the inventory carries one
+  standing: number // current (spendable) standing
+  rank?: number // current rank, parsed from the DE title (undefined if unknown)
+  title?: string // rank title when the inventory carries a readable one
   dailyEarned: number // standing earned today
   dailyCap: number // MR-scaled daily cap (0 ⇒ no daily cap shown)
   dailyShared?: boolean // daily pool shared across the core syndicates
@@ -65,6 +66,19 @@ function title(raw: unknown): string {
   return s
 }
 
+// rankFromTitle extracts the numeric rank from an Affiliation Title. DE stores it
+// either as a number, or (usually) as a localization path whose tail encodes the
+// rank, e.g. "/Lotus/Language/Syndicates/EntratiRank3" ⇒ 3. Returns undefined
+// when neither form is present (a plain readable title carries no index).
+function rankFromTitle(raw: unknown): number | undefined {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+  if (typeof raw === 'string') {
+    const m = raw.match(/Rank(\d+)/i)
+    if (m) return parseInt(m[1], 10)
+  }
+  return undefined
+}
+
 function isDeInventory(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === 'object' && (Array.isArray((v as Record<string, unknown>).MiscItems) || Array.isArray((v as Record<string, unknown>).Suits))
 }
@@ -106,6 +120,7 @@ export function extractSyndicates(info: Record<string, unknown>): IngestSyndicat
       key: slug(name),
       name,
       standing: Number.isFinite(standing) ? standing : 0,
+      rank: rankFromTitle(a.Title),
       title: title(a.Title) || undefined,
       dailyEarned: Number.isFinite(dailyEarned) ? dailyEarned : 0,
       dailyCap: cat?.daily ? cap : 0,

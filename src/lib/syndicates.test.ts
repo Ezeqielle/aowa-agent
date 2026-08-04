@@ -17,11 +17,12 @@ describe('extractSyndicates', () => {
     const got = extractSyndicates({ inventory: JSON.stringify(inv) })
     // Sorted by name: Ostron before Steel Meridian.
     expect(got).toEqual([
-      { key: 'ostron', name: 'Ostron', standing: 70000, title: undefined, dailyEarned: 6000, dailyCap: 6000, dailyShared: undefined },
+      { key: 'ostron', name: 'Ostron', standing: 70000, rank: undefined, title: undefined, dailyEarned: 6000, dailyCap: 6000, dailyShared: undefined },
       {
         key: 'steel_meridian',
         name: 'Steel Meridian',
         standing: 132000,
+        rank: undefined,
         title: 'General',
         dailyEarned: 4000,
         dailyCap: 6000,
@@ -34,17 +35,24 @@ describe('extractSyndicates', () => {
     const inv = { Suits: [], PlayerLevel: 5, Affiliations: [{ Tag: 'SomeFutureSyndicate', Standing: 100 }] }
     const got = extractSyndicates({ inventory: inv })
     expect(got).toEqual([
-      { key: 'some_future', name: 'Some Future', standing: 100, title: undefined, dailyEarned: 0, dailyCap: 0, dailyShared: undefined },
+      { key: 'some_future', name: 'Some Future', standing: 100, rank: undefined, title: undefined, dailyEarned: 0, dailyCap: 0, dailyShared: undefined },
     ])
   })
 
-  it('drops localization-path titles', () => {
+  it('drops localization-path titles but parses the rank from them', () => {
     const inv = {
       Suits: [],
       PlayerLevel: 0,
       Affiliations: [{ Tag: 'EntratiSyndicate', Standing: 5000, Title: '/Lotus/Language/Syndicates/EntratiRank3' }],
     }
-    expect(extractSyndicates({ inventory: inv })[0].title).toBeUndefined()
+    const got = extractSyndicates({ inventory: inv })[0]
+    expect(got.title).toBeUndefined()
+    expect(got.rank).toBe(3)
+  })
+
+  it('reads a numeric Title as the rank', () => {
+    const inv = { Suits: [], PlayerLevel: 5, Affiliations: [{ Tag: 'CetusSyndicate', Standing: 60000, Title: 5 }] }
+    expect(extractSyndicates({ inventory: inv })[0].rank).toBe(5)
   })
 
   it('returns [] for non-DE / empty / affiliation-less payloads', () => {
