@@ -158,9 +158,10 @@ describe('extractProgress', () => {
         { Tag: 'SolNode2', Completes: 1 },
         { Tag: 'SolNode3', Completes: 0 }, // never cleared → not counted
       ],
+      PlayerLevel: 21,
     }
     const got = extractProgress({ inventory: JSON.stringify(inv) })
-    expect(got).toEqual({ quests: ['The Second Dream'], starChartNodes: 2 })
+    expect(got).toEqual({ quests: ['The Second Dream'], starChartNodes: 2, masteryRank: 21 })
   })
   it('returns null for non-DE / empty payloads', () => {
     expect(extractProgress({})).toBeNull()

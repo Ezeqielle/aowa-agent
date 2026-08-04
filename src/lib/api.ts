@@ -52,10 +52,11 @@ export interface IngestPart {
   ducats: number
 }
 
-// Account progress pushed for the progression guide (#58).
+// Account progress pushed for the progression guide (#58) + Mastery helper (#75).
 export interface IngestProgress {
   quests: string[]
   starChartNodes: number
+  masteryRank: number
 }
 
 // Per-syndicate standing + daily-cap snapshot pushed for the Syndicates tab (#63).

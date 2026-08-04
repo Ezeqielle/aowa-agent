@@ -212,6 +212,7 @@ export function extractParts(info: Record<string, unknown>): SellablePart[] {
 export interface Progress {
   quests: string[] // completed quest display names
   starChartNodes: number // distinct nodes cleared at least once
+  masteryRank: number // player MR (PlayerLevel), for the Mastery helper (#75)
 }
 
 // extractProgress reads completed quests (QuestKeys, resolved via QUEST_NAMES)
@@ -249,7 +250,8 @@ export function extractProgress(info: Record<string, unknown>): Progress | null 
     if (Number(m.Completes) > 0) starChartNodes++
   }
 
-  return { quests: quests.sort(), starChartNodes }
+  const mr = Number(inv.PlayerLevel)
+  return { quests: quests.sort(), starChartNodes, masteryRank: Number.isFinite(mr) && mr > 0 ? mr : 0 }
 }
 
 // extractCompletedTodos derives which recurring todo *template keys* the live DE
