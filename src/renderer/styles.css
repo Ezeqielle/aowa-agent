@@ -59,6 +59,17 @@ h1 { font-size: 1.1rem; margin: 0; }
 .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
 .tabpanel { display:none; }
 .tabpanel.active { display:block; }
+.relink-banner {
+  display:flex; align-items:center; gap:.8rem; margin:0 0 1rem; padding:.7rem .9rem;
+  background:linear-gradient(180deg, rgba(255,184,0,.14), rgba(255,184,0,.06));
+  border:1px solid color-mix(in srgb, var(--amber) 55%, var(--border)); border-radius:10px;
+}
+.relink-banner[hidden] { display:none; }
+.relink-icon { font-size:1.25rem; line-height:1; }
+.relink-text { display:flex; flex-direction:column; gap:.1rem; margin-right:auto; }
+.relink-text strong { color:var(--fg); font-size:.9rem; }
+.relink-text span { color:var(--muted); font-size:.78rem; }
+.relink-banner .primary { flex:0 0 auto; }
 .dot { width:.7rem; height:.7rem; border-radius:50%; background:var(--muted); }
 .dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
 .dot.warn { background: var(--amber); box-shadow: 0 0 8px var(--amber); }

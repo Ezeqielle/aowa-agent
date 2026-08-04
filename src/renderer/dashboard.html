@@ -52,6 +52,17 @@
       </div>
       <p class="err" id="err"></p>
 
+      <!-- Relink banner: shown whenever the agent has no token (unlinked). It
+           can drop out of sync silently, so prompt the user to re-link. -->
+      <div class="relink-banner" id="relink-banner" hidden>
+        <span class="relink-icon" aria-hidden>⚠️</span>
+        <div class="relink-text">
+          <strong>Agent not linked</strong>
+          <span>Link it to AOWA or your account won't sync (todos, mastery, currency, syndicates…).</span>
+        </div>
+        <button class="primary" id="relink-btn" type="button">Link now</button>
+      </div>
+
       <nav class="tabs" role="tablist" aria-label="Dashboard sections">
         <button class="tab" role="tab" data-tab="overlay">Overlay</button>
         <button class="tab" role="tab" data-tab="events">Events</button>

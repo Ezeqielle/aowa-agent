@@ -64,6 +64,9 @@ function renderStatus(s: { paired: boolean }): void {
   $('dot').classList.toggle('on', s.paired)
   $('status-text').textContent = s.paired ? 'Agent linked' : 'Not linked'
   ;($('unpair') as HTMLButtonElement).disabled = !s.paired
+  // Prompt a re-link whenever there's no token — the agent silently stops syncing
+  // otherwise. Visible from any tab.
+  ;($('relink-banner') as HTMLElement).hidden = s.paired
 }
 
 const esc = (s: string) =>
@@ -313,6 +316,12 @@ function wireControls(): void {
     else $('err').textContent = res.error ?? 'pairing failed'
   }
   $('pair').addEventListener('click', () => void pair())
+  // "Link now" on the unlinked banner jumps to the Agent tab and focuses the
+  // code field so re-pairing is one click away from wherever the user is.
+  $('relink-btn').addEventListener('click', () => {
+    ;(document.querySelector('.tab[data-tab="agent"]') as HTMLButtonElement | null)?.click()
+    ;($('code') as HTMLInputElement).focus()
+  })
   ;($('code') as HTMLInputElement).addEventListener('keydown', (e) => {
     if ((e as KeyboardEvent).key === 'Enter') void pair()
   })
