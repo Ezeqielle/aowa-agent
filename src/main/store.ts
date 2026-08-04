@@ -1,6 +1,6 @@
 // Token persistence in the main process (a small JSON file in userData).
 import { app } from 'electron'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { HotkeyBinding } from './hotkey'
 
@@ -46,8 +46,14 @@ function read(): State {
     return {}
   }
 }
+// write atomically: serialize to a temp file then rename over the target. A crash
+// or power loss mid-write can't truncate/corrupt agent.json (which read() would
+// then treat as empty, silently dropping the saved token).
 function write(s: State): void {
-  writeFileSync(file(), JSON.stringify(s))
+  const target = file()
+  const tmp = `${target}.tmp`
+  writeFileSync(tmp, JSON.stringify(s))
+  renameSync(tmp, target)
 }
 
 export const loadToken = (): string | null => read().token ?? null

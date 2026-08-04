@@ -200,6 +200,30 @@ function broadcastStatus(): void {
   for (const w of [dashboard]) w?.webContents.send('aowa:status', s)
 }
 
+// Tolerate transient 401s (e.g. the backend restarting during a deploy, or a
+// momentary network blip): only drop the saved token after several *consecutive*
+// auth rejections, so a one-off never unpairs a healthy agent. Any successful
+// authenticated call resets the counter. A genuinely revoked token still keeps
+// failing and eventually unpairs, showing "not linked" as intended.
+const AUTH_FAILURE_LIMIT = 4
+let consecutiveAuthFailures = 0
+function noteAuthSuccess(): void {
+  consecutiveAuthFailures = 0
+}
+// noteAuthFailure records a 401 and returns true once the token has been dropped.
+function noteAuthFailure(): boolean {
+  consecutiveAuthFailures += 1
+  if (consecutiveAuthFailures >= AUTH_FAILURE_LIMIT) {
+    console.warn(`[AOWA] token rejected ${consecutiveAuthFailures}× — unpairing`)
+    clearToken()
+    broadcastStatus()
+    consecutiveAuthFailures = 0
+    return true
+  }
+  console.warn(`[AOWA] transient 401 (${consecutiveAuthFailures}/${AUTH_FAILURE_LIMIT}) — keeping token`)
+  return false
+}
+
 // ---- GEP inventory → AOWA ingest ----------------------------------------
 let pending: IngestItem[] | null = null
 let pendingParts: import('../lib/api').IngestPart[] | null = null
@@ -231,6 +255,7 @@ async function flush(): Promise<void> {
   console.log('[AOWA-INGEST] sending', items.length, 'items,', parts?.length ?? 0, 'parts')
   try {
     const res = await ingestInventory(token, items, lastCurrencies, parts, progress, completed, syndicates)
+    noteAuthSuccess()
     console.log('[AOWA-INGEST] result:', JSON.stringify(res))
     lastSync = {
       relics: res.relics,
@@ -248,8 +273,7 @@ async function flush(): Promise<void> {
     broadcastSync()
   } catch (e) {
     if (e instanceof UnauthorizedError) {
-      clearToken()
-      broadcastStatus()
+      noteAuthFailure()
     } else {
       console.error('[AOWA] ingest failed', e)
     }
@@ -552,13 +576,13 @@ if (!app.requestSingleInstanceLock()) {
           return []
         }),
       ])
+      noteAuthSuccess()
       return { paired: true, todos, relics, builds }
     } catch (e) {
-      if (e instanceof UnauthorizedError) {
-        clearToken()
-        broadcastStatus()
-      }
-      return { paired: false }
+      // Only a sustained streak of 401s drops the token; a transient failure
+      // keeps it, so we still report paired while the token is on disk.
+      if (e instanceof UnauthorizedError) noteAuthFailure()
+      return { paired: loadToken() != null }
     }
   })
 
