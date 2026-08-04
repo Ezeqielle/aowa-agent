@@ -1,7 +1,8 @@
 // Derives per-syndicate standing + daily-cap usage from the DE inventory for the
-// web Syndicates tab (#63). DE stores lifetime standing per faction in the
-// `Affiliations` array ({ Tag, Standing, Title }) and the standing earned *today*
-// in a family of top-level `DailyAffiliation*` counters (reset at daily reset).
+// web Syndicates tab (#63). DE stores the CURRENT spendable standing per faction
+// in the `Affiliations` array ({ Tag, Standing, Title }) — purchases subtract
+// from it — and the standing earned *today* in a family of top-level
+// `DailyAffiliation*` counters (reset at daily reset).
 // The daily cap scales with Mastery Rank: 1000 + 500·MR (PlayerLevel).
 //
 // The six "core" relay syndicates (New Loka, Red Veil, Steel Meridian, Arbiters,
