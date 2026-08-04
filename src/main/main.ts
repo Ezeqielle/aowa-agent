@@ -13,7 +13,7 @@ import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut, nativeI
 import { join } from 'node:path'
 import { API_BASE, DEBUG_GEP, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
 import { fetchBuilds, fetchOwnedRelics, fetchSubscriptions, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
-import { extractCompletedTodos, extractCurrencies, extractParts, extractProgress, findInventoryValue, normalizeInventory, type Currencies } from '../lib/inventory'
+import { extractCompletedTodos, extractCurrencies, extractParts, extractPending, extractProgress, findInventoryValue, normalizeInventory, type Currencies } from '../lib/inventory'
 import { extractSyndicates } from '../lib/syndicates'
 import { extractPairCode } from '../lib/deeplink'
 import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
@@ -230,6 +230,7 @@ let pendingParts: import('../lib/api').IngestPart[] | null = null
 let pendingProgress: import('../lib/api').IngestProgress | null = null
 let pendingCompleted: string[] | null = null
 let pendingSyndicates: import('../lib/api').IngestSyndicate[] | null = null
+let pendingBuilds: import('../lib/api').IngestPending[] | null = null
 let flushTimer: ReturnType<typeof setTimeout> | null = null
 
 function scheduleFlush(): void {
@@ -243,18 +244,20 @@ async function flush(): Promise<void> {
   const progress = pendingProgress
   const completed = pendingCompleted
   const syndicates = pendingSyndicates
+  const builds = pendingBuilds
   pending = null
   pendingParts = null
   pendingProgress = null
   pendingCompleted = null
   pendingSyndicates = null
+  pendingBuilds = null
   const token = loadToken()
   if (!items?.length || !token) return
   // Log exactly what we send so the real GEP item naming can be mapped (#42):
   // if relics aren't matching in AOWA, these are the names to reconcile.
   console.log('[AOWA-INGEST] sending', items.length, 'items,', parts?.length ?? 0, 'parts')
   try {
-    const res = await ingestInventory(token, items, lastCurrencies, parts, progress, completed, syndicates)
+    const res = await ingestInventory(token, items, lastCurrencies, parts, progress, completed, syndicates, builds)
     noteAuthSuccess()
     console.log('[AOWA-INGEST] result:', JSON.stringify(res))
     lastSync = {
@@ -385,6 +388,10 @@ async function pullInventory(gameId: number, api: NonNullable<typeof owApp.overw
       pendingSyndicates = syndicates
       console.log('[AOWA-GEP] syndicates:', syndicates.length)
     }
+    // Always send the foundry queue (even empty) so claiming/finishing a build
+    // clears it server-side (#66).
+    pendingBuilds = extractPending(wrapped)
+    if (pendingBuilds.length) console.log('[AOWA-GEP] foundry builds:', pendingBuilds.length)
     if (items.length) {
       pending = items
       scheduleFlush()

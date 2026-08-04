@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractCompletedTodos, extractCurrencies, extractParts, extractProgress, findInventoryValue, normalizeInventory } from './inventory'
+import { extractCompletedTodos, extractCurrencies, extractParts, extractPending, extractProgress, findInventoryValue, normalizeInventory } from './inventory'
 
 describe('normalizeInventory', () => {
   it('finds inventory nested under a GEP feature category (match_info.inventory)', () => {
@@ -141,6 +141,30 @@ describe('extractParts', () => {
   it('returns [] for non-DE / empty payloads', () => {
     expect(extractParts({})).toEqual([])
     expect(extractParts({ inventory: [{ name: 'x', count: 1 }] })).toEqual([])
+  })
+})
+
+describe('extractPending', () => {
+  it('reads in-progress builds: mapped name + humanized fallback + completion ms', () => {
+    const inv = {
+      Suits: [],
+      PendingRecipes: [
+        // Known recipe → resolved via PART_INFO.
+        { ItemType: '/Lotus/Types/Recipes/WarframeRecipes/AshPrimeBlueprint', CompletionDate: { $date: { $numberLong: '1712345678000' } } },
+        // Unknown recipe → humanized from the path tail.
+        { ItemType: '/Lotus/Types/Recipes/Weapons/BratonBlueprint', CompletionDate: { $date: { $numberLong: '1712300000000' } } },
+      ],
+    }
+    const got = extractPending({ inventory: JSON.stringify(inv) })
+    expect(got).toEqual([
+      { name: 'Ash Prime Blueprint', completeAt: 1712345678000 },
+      { name: 'Braton Blueprint', completeAt: 1712300000000 },
+    ])
+  })
+
+  it('returns [] when nothing is cooking / not a DE payload', () => {
+    expect(extractPending({ inventory: { Suits: [], PendingRecipes: [] } })).toEqual([])
+    expect(extractPending({})).toEqual([])
   })
 })
 

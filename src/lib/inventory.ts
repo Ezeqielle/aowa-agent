@@ -207,6 +207,73 @@ export function extractParts(info: Record<string, unknown>): SellablePart[] {
   return Array.from(counts, ([name, v]) => ({ name, count: v.count, ducats: v.ducats }))
 }
 
+// One in-progress foundry build (#66): the item cooking + when it finishes.
+export interface PendingBuild {
+  name: string // resolved item/blueprint name
+  completeAt: number // epoch ms the build is ready to claim (0 if unknown)
+}
+
+// humanizeType turns a DE recipe ItemType path into a readable name when it isn't
+// in the generated map, e.g. ".../AshPrimeBlueprint" → "Ash Prime Blueprint".
+function humanizeType(type: string): string {
+  const tail = type.split('/').pop() ?? type
+  return (
+    tail
+      .replace(/Component$/, '')
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/_/g, ' ')
+      .trim() || tail
+  )
+}
+
+// completionMs decodes DE's build-completion timestamp. It arrives as MongoDB
+// extended JSON: { $date: { $numberLong: "<ms>" } } (also tolerates a plain
+// number or ISO string). Returns epoch ms, or 0 when absent.
+function completionMs(v: unknown): number {
+  if (typeof v === 'number') return v
+  if (v && typeof v === 'object') {
+    const d = (v as Record<string, unknown>).$date
+    if (typeof d === 'number') return d
+    if (typeof d === 'string') {
+      const n = Number(d)
+      return Number.isFinite(n) ? n : Date.parse(d) || 0
+    }
+    if (d && typeof d === 'object' && '$numberLong' in (d as Record<string, unknown>)) {
+      return Number((d as Record<string, unknown>).$numberLong) || 0
+    }
+  }
+  return 0
+}
+
+// extractPending reads the DE `PendingRecipes` array — the items currently in the
+// foundry — resolving each to a readable name (generated map, else humanized
+// path) and its completion time. Returns [] for a non-DE / empty payload.
+export function extractPending(info: Record<string, unknown>): PendingBuild[] {
+  const raw = findInventoryValue(info)
+  if (raw == null) return []
+  let value: unknown = raw
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw)
+    } catch {
+      return []
+    }
+  }
+  if (!isDeInventory(value)) return []
+  const inv = value as Record<string, unknown>
+
+  const list = Array.isArray(inv.PendingRecipes) ? (inv.PendingRecipes as unknown[]) : []
+  const out: PendingBuild[] = []
+  for (const raw of list) {
+    if (!raw || typeof raw !== 'object') continue
+    const e = raw as Record<string, unknown>
+    const type = typeof e.ItemType === 'string' ? e.ItemType : ''
+    if (!type) continue
+    out.push({ name: PART_INFO[type]?.n ?? humanizeType(type), completeAt: completionMs(e.CompletionDate) })
+  }
+  return out
+}
+
 // Account progress for the progression-aware guide (#58): completed quests +
 // how many star-chart nodes the player has cleared.
 export interface Progress {

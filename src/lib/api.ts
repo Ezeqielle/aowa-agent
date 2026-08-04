@@ -70,10 +70,17 @@ export interface IngestSyndicate {
   dailyShared?: boolean
 }
 
+// One in-progress foundry build pushed for the Foundry tab (#66).
+export interface IngestPending {
+  name: string
+  completeAt: number
+}
+
 // ingestInventory pushes an inventory snapshot. The backend reconciles it:
 // relic names → owned relic counts, gear names → craftables marked owned. Any
 // currencies are stored per-user and surfaced on the web Account tab (#52);
-// prime parts power the sellables view (#54).
+// prime parts power the sellables view (#54); pending builds power the Foundry
+// cooking queue (#66).
 export async function ingestInventory(
   token: string,
   items: IngestItem[],
@@ -82,6 +89,7 @@ export async function ingestInventory(
   progress?: IngestProgress | null,
   completedTodos?: string[] | null,
   syndicates?: IngestSyndicate[] | null,
+  pending?: IngestPending[] | null,
   at: string = new Date().toISOString(),
 ): Promise<IngestResult> {
   const body: Record<string, unknown> = { events: [{ type: 'inventory', items, at }] }
@@ -90,6 +98,7 @@ export async function ingestInventory(
   if (progress) body.progress = progress
   if (completedTodos && completedTodos.length) body.completedTodos = completedTodos
   if (syndicates && syndicates.length) body.syndicates = syndicates
+  if (pending) body.pending = pending // always send (empty = nothing cooking)
   const res = await fetch(`${API_BASE}/me/agent/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
