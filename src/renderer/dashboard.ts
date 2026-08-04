@@ -344,7 +344,7 @@ async function initOverlaySettings(): Promise<void> {
 }
 
 // Tab navigation (#79): group the dashboard into Overlay / Events / Agent /
-// Play. Every card keeps its id, so the render functions are unaffected — this
+// Planner. Every card keeps its id, so the render functions are unaffected — this
 // only toggles which panel is visible. The last-viewed tab is remembered.
 function initTabs(): void {
   const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.tab'))
