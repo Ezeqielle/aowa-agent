@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractCompletedTodos, extractCurrencies, extractParts, extractPending, extractProgress, findInventoryValue, normalizeInventory } from './inventory'
+import { extractCompletedTodos, extractCurrencies, extractParts, extractPending, extractProgress, extractResources, extractResourcesDetailed, findInventoryValue, normalizeInventory } from './inventory'
 
 describe('normalizeInventory', () => {
   it('finds inventory nested under a GEP feature category (match_info.inventory)', () => {
@@ -216,5 +216,45 @@ describe('extractCompletedTodos', () => {
   it('returns [] for non-DE / empty payloads', () => {
     expect(extractCompletedTodos({})).toEqual([])
     expect(extractCompletedTodos({ inventory: [{ name: 'x', count: 1 }] })).toEqual([])
+  })
+})
+
+describe('extractResources (#95)', () => {
+  // A DE inventory carrying: a plain MiscItems resource, a clan-research resource
+  // (which lives under /Types/Items/Research/, NOT /MiscItems/ — the gap that made
+  // Fieldron & friends invisible), a StoreItems-prefixed ItemType (DE's variant for
+  // resources that are also sold), and something genuinely unknown.
+  const inv = {
+    Suits: [],
+    MiscItems: [
+      { ItemType: '/Lotus/Types/Items/MiscItems/OrokinCell', ItemCount: 42 },
+      { ItemType: '/Lotus/Types/Items/Research/EnergyComponent', ItemCount: 7 }, // Fieldron
+      { ItemType: '/Lotus/StoreItems/Types/Items/MiscItems/Kuva', ItemCount: 1500 },
+      { ItemType: '/Lotus/Types/Items/MiscItems/TotallyMadeUpThing', ItemCount: 3 },
+      { ItemType: '/Lotus/Types/Items/MiscItems/Ferrite', ItemCount: 0 }, // zero → skipped
+    ],
+  }
+  const wrapped = { match_info: { inventory: JSON.stringify(inv) } }
+
+  it('maps MiscItems, clan-research resources and the StoreItems path variant', () => {
+    const got = extractResources(wrapped)
+    const byName = Object.fromEntries(got.map((r) => [r.name, r.count]))
+    expect(byName['Orokin Cell']).toBe(42)
+    expect(byName['Fieldron']).toBe(7) // was unreachable before #95
+    expect(byName['Kuva']).toBe(1500) // StoreItems-prefixed ItemType
+    expect(byName['Ferrite']).toBeUndefined() // count 0 is not "owned"
+  })
+
+  it('reports unmapped ItemTypes instead of silently rendering them as zero', () => {
+    const { unmapped } = extractResourcesDetailed(wrapped)
+    expect(unmapped).toContain('/Lotus/Types/Items/MiscItems/TotallyMadeUpThing')
+    // Known ones must not be reported as gaps.
+    expect(unmapped).not.toContain('/Lotus/Types/Items/MiscItems/OrokinCell')
+    expect(unmapped).not.toContain('/Lotus/StoreItems/Types/Items/MiscItems/Kuva')
+  })
+
+  it('returns nothing for a non-DE payload', () => {
+    expect(extractResources({ match_info: { inventory: 'not json' } })).toEqual([])
+    expect(extractResourcesDetailed({}).unmapped).toEqual([])
   })
 })

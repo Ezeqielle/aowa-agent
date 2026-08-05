@@ -13,7 +13,7 @@ import { GEAR_NAMES } from './gear'
 import { PART_INFO } from './parts'
 import { QUEST_NAMES } from './quests'
 import { RELIC_NAMES } from './relics'
-import { RESOURCE_NAMES } from './resources'
+import { resourceName } from './resources'
 
 // DE inventory arrays of masterable gear → the mastery cap for that class.
 // Mastery XP (lifetime, from XPInfo) ≥ cap ⇒ leveled to max at least once.
@@ -215,34 +215,57 @@ export interface OwnedResource {
 }
 
 // extractResources reads owned crafting-resource quantities from the DE inventory
-// MiscItems (keyed by uniqueName → RESOURCE_NAMES), for the Foundry owned-vs-
-// needed component counts. Returns [] for a non-DE / empty payload.
+// MiscItems (ItemType → resourceName), for the Foundry owned-vs-needed component
+// counts. Returns [] for a non-DE / empty payload.
 export function extractResources(info: Record<string, unknown>): OwnedResource[] {
+  return extractResourcesDetailed(info).resources
+}
+
+// extractResourcesDetailed also reports the MiscItems ItemTypes it could NOT map
+// (#95). This matters because an unmapped resource is indistinguishable from
+// "you own none" in the Foundry — a missing map entry renders a silent 0, which is
+// exactly how the previous coverage gap went unnoticed. Callers log `unmapped` so
+// a gap is visible instead of looking like an empty stash.
+export function extractResourcesDetailed(info: Record<string, unknown>): {
+  resources: OwnedResource[]
+  unmapped: string[]
+} {
   const raw = findInventoryValue(info)
-  if (raw == null) return []
+  if (raw == null) return { resources: [], unmapped: [] }
   let value: unknown = raw
   if (typeof raw === 'string') {
     try {
       value = JSON.parse(raw)
     } catch {
-      return []
+      return { resources: [], unmapped: [] }
     }
   }
-  if (!isDeInventory(value)) return []
+  if (!isDeInventory(value)) return { resources: [], unmapped: [] }
   const inv = value as Record<string, unknown>
 
   const counts = new Map<string, number>()
+  const unmapped = new Set<string>()
   const misc = Array.isArray(inv.MiscItems) ? (inv.MiscItems as unknown[]) : []
   for (const raw of misc) {
     if (!raw || typeof raw !== 'object') continue
     const mi = raw as Record<string, unknown>
-    const name = RESOURCE_NAMES[typeof mi.ItemType === 'string' ? mi.ItemType : '']
-    if (!name) continue
+    const itemType = typeof mi.ItemType === 'string' ? mi.ItemType : ''
     const c = Number(mi.ItemCount)
     if (!Number.isFinite(c) || c <= 0) continue
+    // resourceName tolerates the StoreItems-prefixed ItemType DE uses for
+    // resources that are also sold (Kuva, Forma) — an exact-match lookup missed
+    // those entirely.
+    const name = resourceName(itemType)
+    if (!name) {
+      if (itemType) unmapped.add(itemType)
+      continue
+    }
     counts.set(name, (counts.get(name) ?? 0) + c)
   }
-  return Array.from(counts, ([name, count]) => ({ name, count }))
+  return {
+    resources: Array.from(counts, ([name, count]) => ({ name, count })),
+    unmapped: [...unmapped],
+  }
 }
 
 // One in-progress foundry build (#66): the item cooking + when it finishes.

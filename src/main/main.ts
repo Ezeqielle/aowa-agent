@@ -13,7 +13,7 @@ import { app, BrowserWindow, Tray, Menu, ipcMain, shell, globalShortcut, nativeI
 import { join } from 'node:path'
 import { API_BASE, DEBUG_GEP, INGEST_DEBOUNCE_MS, URL_SCHEME, WARFRAME_GAME_ID } from '../lib/config'
 import { fetchBuilds, fetchOwnedRelics, fetchSubscriptions, fetchTodos, ingestInventory, pair, UnauthorizedError, type IngestItem } from '../lib/api'
-import { extractCompletedTodos, extractCurrencies, extractParts, extractPending, extractProgress, extractResources, findInventoryValue, normalizeInventory, type Currencies } from '../lib/inventory'
+import { extractCompletedTodos, extractCurrencies, extractParts, extractPending, extractProgress, extractResourcesDetailed, findInventoryValue, normalizeInventory, type Currencies } from '../lib/inventory'
 import { extractSyndicates } from '../lib/syndicates'
 import { extractPairCode } from '../lib/deeplink'
 import { fetchCycles, fetchWorldState } from '../lib/aowa-data'
@@ -395,10 +395,18 @@ async function pullInventory(gameId: number, api: NonNullable<typeof owApp.overw
     // clears it server-side (#66).
     pendingBuilds = extractPending(wrapped)
     if (pendingBuilds.length) console.log('[AOWA-GEP] foundry builds:', pendingBuilds.length)
-    const resources = extractResources(wrapped)
+    const { resources, unmapped } = extractResourcesDetailed(wrapped)
     if (resources.length) {
       pendingResources = resources
       console.log('[AOWA-GEP] resources:', resources.length)
+    }
+    // An unmapped resource renders as a silent 0 in the Foundry, indistinguishable
+    // from owning none (#95) — so say so out loud. A run of these means
+    // scripts/gen-resources.mjs needs re-running against a newer WFCD dataset.
+    if (unmapped.length) {
+      console.log(`[AOWA-GEP] ${unmapped.length} MiscItems ItemType(s) not in the resource map:`)
+      for (const t of unmapped.slice(0, 20)) console.log('   unmapped:', t)
+      if (unmapped.length > 20) console.log(`   … and ${unmapped.length - 20} more`)
     }
     if (items.length) {
       pending = items
